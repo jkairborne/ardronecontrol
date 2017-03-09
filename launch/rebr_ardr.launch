@@ -1,0 +1,4 @@
+<launch>
+  <node name="rebroadcast" pkg="ardronecontrol" type="rebroadcast" />
+  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" />
+</launch>

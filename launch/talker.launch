@@ -1,0 +1,4 @@
+<launch>
+  <node name="PoseStampedPub" pkg="ardronecontrol" type="PoseStampedPub" />
+  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" />
+</launch>
