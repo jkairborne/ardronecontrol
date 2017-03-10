@@ -33,6 +33,7 @@ public:
     output.pose.position.x = input.pose.position.x;
     output.pose.position.y = -input.pose.position.z;
     output.pose.position.z = input.pose.position.y;
+    output.pose.orientation = input.pose.orientation;
 
 
     ROS_INFO("This is another test");

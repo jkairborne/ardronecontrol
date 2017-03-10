@@ -6,6 +6,7 @@
 #include "tf/transform_datatypes.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/String.h"
+#include "rebroadcaster.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -62,8 +63,11 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
-    quad_twist = n.advertise<geometry_msgs::Twist>("angles_output", 1000);
-    quat_subscriber = n.subscribe("vrpn_client_node/Ardrone/pose", 1000, MsgCallback);
+    quad_twist = n.advertise<geometry_msgs::Twist>("angles_output", 5);
+
+    SubscribeAndPublish subpub1 =  SubscribeAndPublish("/Ardrone/pose");
+
+  //  quat_subscriber = n.subscribe("Ardrone/pose", 5, MsgCallback);
 
     // check for incoming quaternions untill ctrl+c is pressed
     ROS_INFO("waiting for quaternion");
