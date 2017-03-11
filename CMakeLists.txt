@@ -17,20 +17,12 @@ include_directories(
 )
 
 ## Declare a C++ executable
-add_executable(opencv_temp src/opencv_temp.cpp)
-target_link_libraries(opencv_temp ${catkin_LIBRARIES})
 
 add_executable(ardronev1 src/ardronev1.cpp)
 target_link_libraries(ardronev1 ${catkin_LIBRARIES} pid)
 
 add_executable(PoseStampedPub src/PoseStampedPub.cpp)
 target_link_libraries(PoseStampedPub ${catkin_LIBRARIES})
-
-add_executable(rebroadcast src/rebroadcast.cpp)
-target_link_libraries(rebroadcast ${catkin_LIBRARIES})
-
-add_executable(testing2 src/testing2.cpp)
-target_link_libraries(testing2 ${catkin_LIBRARIES})
 
 add_executable(filter_empty_msgs src/filter_empty_msgs.cpp)
 target_link_libraries(filter_empty_msgs ${catkin_LIBRARIES})
