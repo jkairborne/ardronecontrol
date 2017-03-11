@@ -15,6 +15,8 @@
 // publisher in the function MsgCallback:
 ros::Publisher quad_twist;
 ros::Subscriber pose_subscriber;
+ros::Time time1, time2, time3;
+ros::Duration diff1, diff2;
 
 // Main function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
@@ -27,7 +29,7 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     // Define controller setpoints
     x_des = 1.0;
     y_des = 0.65;
-    z_des = 0;
+    z_des = 0.25;
     // Define controller gains
     Kp_xy = 1.0;
     Kd_xy = 0;
@@ -76,7 +78,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
     // Advertise the cmd vel node
-    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel", 5);
+    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
     // Subscribe to the Ardrone data incoming from the OptiTrack
     pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);
 

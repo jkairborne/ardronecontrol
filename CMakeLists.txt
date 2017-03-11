@@ -32,6 +32,9 @@ target_link_libraries(rebroadcast ${catkin_LIBRARIES})
 add_executable(testing2 src/testing2.cpp)
 target_link_libraries(testing2 ${catkin_LIBRARIES})
 
+add_executable(filter_empty_msgs src/filter_empty_msgs.cpp)
+target_link_libraries(filter_empty_msgs ${catkin_LIBRARIES})
+
 # Make a PID library
 add_library(pid src/pid.cpp)
 target_link_libraries(pid ${catkin_LIBRARIES})
