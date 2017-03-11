@@ -29,8 +29,8 @@ target_link_libraries(PoseStampedPub ${catkin_LIBRARIES})
 add_executable(rebroadcast src/rebroadcast.cpp)
 target_link_libraries(rebroadcast ${catkin_LIBRARIES})
 
-add_executable(test src/test.cpp)
-target_link_libraries(test ${catkin_LIBRARIES})
+add_executable(testing2 src/testing2.cpp)
+target_link_libraries(testing2 ${catkin_LIBRARIES})
 
 # Make a PID library
 add_library(pid src/pid.cpp)

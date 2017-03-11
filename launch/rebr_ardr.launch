@@ -1,4 +1,4 @@
 <launch>
-  <node name="rebroadcast" pkg="ardronecontrol" type="rebroadcast" />
+  <include file="$(find vrpn_client_ros)/launch/sample.launch"/>
   <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" />
 </launch>
