@@ -9,7 +9,7 @@ topics:
 -
   name    : keyboard
   topic   : key_filtered
-  timeout : 1.0
+  timeout : 0.01
   priority: 10
 -
   name    : OptiOutput

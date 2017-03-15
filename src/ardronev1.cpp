@@ -19,12 +19,25 @@ ros::Subscriber pose_subscriber;
 ros::Time newtime, oldtime;
 ros::Duration dt_ros;
 
-// Define controller setpoints, in case there is no subscriber to callback
-double x_des = 1.0;
-double y_des = 0.65;
-double z_des = 0.25;
+  
 
-    
+    // Define controller gains
+    double Kp_x = 0.1;
+    double Kd_x = 0.2;
+    double Ki_x = 0.0;
+    double Kp_y = 0.1;
+    double Kd_y = 0.2;
+    double Ki_y = 0.0;
+    double Kp_z = 0.7;
+    double Kd_z = 0;
+    double Ki_z = 0;
+    double dt = 0.01;
+    //
+    // Create the PID class instances for x, y, and z:
+    PID pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
+    PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
+    PID pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
+
 
 // Main function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
@@ -33,15 +46,19 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 {
     geometry_msgs::PoseStamped pose_fixt;
     geometry_msgs::Quaternion GMquat;
-    double Kp_xy,Kp_z,Kd_xy,Kd_z,Ki_xy,Ki_z,dt;
     
-    // Define controller gains
-    Kp_xy = 1.0;
-    Kd_xy = 0;
-    Ki_xy = 0;
-    Kp_z = 1.0;
-    Kd_z = 0;
-    Ki_z = 0;
+
+//Need to have all three gains have the same sign
+//if ( !((Kp_xy<=0. && Ki_xy<=0. && Kd_xy<=0.) || (Kp_xy>=0. && Ki_xy>=0. && Kd_xy>=0.) || (Kp_z<=0. && Ki_z<=0. && Kd_z<=0.) || (Kp_z>=0. && Ki_z>=0. && Kd_z>=0.)) )
+//{
+//   ROS_WARN("All three gains (Kp, Ki, Kd) should have the same sign for stability.");
+//}
+
+
+// Define controller setpoints, in case there is no subscriber to callback
+double x_des = 1.0;
+double y_des = 1.0;
+double z_des = 0.4;
 
     // Assign new time into newtime global variable
     newtime = msg.header.stamp;
@@ -60,6 +77,8 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     // the tf::Quaternion has a method to acess roll pitch and yaw, which we use here
     double roll, pitch, yaw;
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+//    ROS_INFO("Roll = %.2f, Pitch = %.2f, Yaw = %.2f",roll*180/3.1415926,pitch*180/3.1415926,yaw*180/3.1415926);
+
 
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
@@ -67,17 +86,17 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     delta_y = -sin(yaw)*(pose_fixt.pose.position.x-x_des) + cos(yaw)*(pose_fixt.pose.position.y-y_des);
     delta_z = pose_fixt.pose.position.z-z_des;
 
+//    ROS_INFO("dt = %.2f, delta_x = %.2f, delta_y = %.2f",dt,delta_x,delta_y);
+
     // Create the output message to be published
     geometry_msgs::Twist pid_output;
 
-    // Create the PID class instances for x, y, and z:
-    PID pidx = PID(dt,1,-1,Kp_xy,Kd_xy,Ki_xy);
-    PID pidy = PID(dt,1,-1,Kp_xy,Kd_xy,Ki_xy);
-    PID pidz = PID(dt,1,-1,Kp_z,Kd_z,Ki_z);
     // Populate the output message
     pid_output.linear.x = pidx.calculate(0,delta_x);
     pid_output.linear.y = pidy.calculate(0,delta_y);
     pid_output.linear.z = pidz.calculate(0,delta_z);
+    // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
+    pid_output.angular.y = 0.1;
 
     // Re-assign the times
     oldtime = newtime;
@@ -85,14 +104,6 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     // publish PID output:
     quad_twist.publish(pid_output);
 }
-
-void PositionCallback(const geometry_msgs::Vector3& VecIn)
-{
-    x_des = VecIn.x;
-    y_des = VecIn.y;
-    z_des = VecIn.z;
-}
-
 
 int main(int argc, char **argv)
 {
@@ -103,10 +114,7 @@ int main(int argc, char **argv)
     quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
     // Subscribe to the Ardrone data incoming from the OptiTrack
     pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);
-    ros::Subscriber setpoints = n.subscribe("/desired_pos",3,PositionCallback);
 
-    // check for incoming quaternions untill ctrl+c is pressed
-    ROS_INFO("waiting for quaternion");
 
     ros::spin();
 
