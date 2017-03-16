@@ -8,6 +8,7 @@
 #include "std_msgs/Float64.h"
 #include "std_msgs/String.h"
 #include "OptiTools.h"
+#include "std_msgs/Empty.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -15,21 +16,21 @@
 // Here I use global publisher and subscriber, since I want to access the
 // publisher in the function MsgCallback:
 ros::Publisher quad_twist;
+ros::Publisher land_ardrone;
 ros::Subscriber pose_subscriber;
 ros::Time newtime, oldtime;
 ros::Duration dt_ros;
 
-  
-
+ 
     // Define controller gains
-    double Kp_x = 0.4;
-    double Kd_x = 0.8;
+    double Kp_x = 0.3;
+    double Kd_x = 0.6;
     double Ki_x = 0.0;
-    double Kp_y = 0.4;
-    double Kd_y = 0.8;
+    double Kp_y = 0.3;
+    double Kd_y = 0.6;
     double Ki_y = 0.0;
-    double Kp_z = 0.7;
-    double Kd_z = 0;
+    double Kp_z = 0.8;
+    double Kd_z = 0.4;
     double Ki_z = 0;
     double dt = 0.01;
     //
@@ -38,6 +39,7 @@ ros::Duration dt_ros;
     PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
     PID pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
 
+    bool on_ground = 1;
 
 // Main function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
@@ -101,24 +103,31 @@ double y_des = 1.0;
     //Section for Simon's landing controller:
     double z_act = pose_fixt.pose.position.z;
     // Parameters to be modified
-    double tau = 1;
-    double zd_above = -0.8;
-    double zd_low = -0.1;
+    double tau = 0.5;
+    double zdot_initial = -0.7;
+    double zdot_touchdown = -0.07;
 
 
-    double z_upper = -zd_above*tau;
+    double z_flare = -zdot_initial*0.7*tau;
+    double z_land = 0.03;
 
-
-    if(z_act>z_upper)
+    if (z_act < z_land && !on_ground)
     {
-        pid_output.linear.z = zd_above;
+        std_msgs::Empty landrone;
+        land_ardrone.publish(landrone);
+    }
+
+    if(z_act>z_flare)
+    {
+        pid_output.linear.z = zdot_initial;
+        on_ground = 0;
     }
     else
     {
-        pid_output.linear.z = std::min(-z_act/tau,zd_low);
+        pid_output.linear.z = std::min(-z_act/tau,zdot_touchdown);
     }
 
-    ROS_INFO("pid out = %.2f, z_act = %.2f, -z/tau = %.2f, zd_low = -0.1, zd_above = -0.8",pid_output.linear.z, z_act, -z_act/tau);
+    ROS_INFO("pid out = %.2f, z_act = %.2f, -z/tau = %.2f, on_ground = %d",pid_output.linear.z, z_act, -z_act/tau, on_ground);
 
         // Re-assign the times
     oldtime = newtime;
@@ -132,8 +141,10 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
     oldtime = ros::Time::now();
+
     // Advertise the cmd vel node
     quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
+    land_ardrone = n.advertise<std_msgs::Empty>("ardrone/land",5);
     // Subscribe to the Ardrone data incoming from the OptiTrack
     pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);
 
