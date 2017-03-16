@@ -18,9 +18,9 @@ int main(int argc, char **argv)
   {
     geometry_msgs::PoseStamped msg;
     msg.header.stamp = ros::Time::now();
-    msg.pose.position.x = count;
-    msg.pose.position.y = 0.5;
-    msg.pose.position.z = 0.3;
+    msg.pose.position.x = 1;
+    msg.pose.position.y = 1-0.1*count;
+    msg.pose.position.z = 1;
     msg.pose.orientation.x = 0;
     msg.pose.orientation.y = 0;
     msg.pose.orientation.z = 0;

@@ -58,7 +58,7 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 // Define controller setpoints, in case there is no subscriber to callback
 double x_des = 1.0;
 double y_des = 1.0;
-double z_des = 0.4;
+//double z_des = 0.4;
 
     // Assign new time into newtime global variable
     newtime = msg.header.stamp;
@@ -78,15 +78,16 @@ double z_des = 0.4;
     double roll, pitch, yaw;
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 //    ROS_INFO("Roll = %.2f, Pitch = %.2f, Yaw = %.2f",roll*180/3.1415926,pitch*180/3.1415926,yaw*180/3.1415926);
+    
 
 
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
     delta_x = cos(yaw)*(pose_fixt.pose.position.x-x_des) + sin(yaw)*(pose_fixt.pose.position.y-y_des);
     delta_y = -sin(yaw)*(pose_fixt.pose.position.x-x_des) + cos(yaw)*(pose_fixt.pose.position.y-y_des);
-    delta_z = pose_fixt.pose.position.z-z_des;
+//NOT REQUIRED FOR SIMON'S LANDING    delta_z = pose_fixt.pose.position.z-z_des;
 
-//    ROS_INFO("dt = %.2f, delta_x = %.2f, delta_y = %.2f",dt,delta_x,delta_y);
+//   ROS_INFO("dt = %.2f, delta_x = %.2f, delta_y = %.2f",dt,delta_x,delta_y);
 
     // Create the output message to be published
     geometry_msgs::Twist pid_output;
@@ -94,11 +95,32 @@ double z_des = 0.4;
     // Populate the output message
     pid_output.linear.x = pidx.calculate(0,delta_x);
     pid_output.linear.y = pidy.calculate(0,delta_y);
-    pid_output.linear.z = pidz.calculate(0,delta_z);
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
 
-    // Re-assign the times
+    //Section for Simon's landing controller:
+    double z_act = pose_fixt.pose.position.z;
+    // Parameters to be modified
+    double tau = 1;
+    double zd_above = -0.8;
+    double zd_low = -0.1;
+
+
+    double z_upper = -zd_above*tau;
+
+
+    if(z_act>z_upper)
+    {
+        pid_output.linear.z = zd_above;
+    }
+    else
+    {
+        pid_output.linear.z = std::min(-z_act/tau,zd_low);
+    }
+
+    ROS_INFO("pid out = %.2f, z_act = %.2f, -z/tau = %.2f, zd_low = -0.1, zd_above = -0.8",pid_output.linear.z, z_act, -z_act/tau);
+
+        // Re-assign the times
     oldtime = newtime;
 
     // publish PID output:
