@@ -16,7 +16,7 @@ ROS_INFO("I heard: [%f, %f, %f]", msg.linear.x,msg.linear.y,msg.linear.z);
 			{
 			PassedThrough.publish(msg);
 			}
-   	ros::Rate loop_rate(10);
+   	ros::Rate loop_rate(100);
 	ros::spinOnce();
 	loop_rate.sleep(); 
   }

@@ -22,11 +22,11 @@ ros::Duration dt_ros;
   
 
     // Define controller gains
-    double Kp_x = 0.1;
-    double Kd_x = 0.2;
+    double Kp_x = 0.4;
+    double Kd_x = 0.8;
     double Ki_x = 0.0;
-    double Kp_y = 0.1;
-    double Kd_y = 0.2;
+    double Kp_y = 0.4;
+    double Kd_y = 0.8;
     double Ki_y = 0.0;
     double Kp_z = 0.7;
     double Kd_z = 0;
