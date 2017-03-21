@@ -1,0 +1,15 @@
+<launch>
+
+<!-- Launch the ardronev1 node - our OptiTrack control -->
+
+
+    <node name="TwistPub" pkg="ardronecontrol" type="TwistPub"/>
+
+    <node name="vel_mux" pkg="twist_mux" type="twist_mux">
+        <remap from="twist" to="twist_mux/cmd_vel"/>
+	<remap from="cmd_vel_out" to="cmd_vel"/>
+        <rosparam file="$(find ardronecontrol)/config/muxtest_topics.yaml" command="load"/>
+        <rosparam file="$(find ardronecontrol)/config/muxtest_locks.yaml" command="load"/>
+    </node>
+
+</launch>
