@@ -20,7 +20,8 @@ ros::Publisher land_ardrone;
 ros::Subscriber pose_subscriber;
 ros::Time newtime, oldtime;
 ros::Duration dt_ros;
-
+ros::Time t_in_ge;
+ros::Duration dt_ge;
  
     // Define controller gains
     double Kp_x = 0.3;
@@ -40,6 +41,7 @@ ros::Duration dt_ros;
     PID pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
 
     bool on_ground = 1;
+    bool in_ge = 0;
 
 // Main function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
@@ -110,6 +112,9 @@ double y_des = 1.0;
 
     double z_flare = -zdot_initial*0.7*tau;
     double z_land = 0.03;
+    
+    double z_ge = 0.15;
+
 
     if (z_act < z_land && !on_ground)
     {
@@ -124,10 +129,31 @@ double y_des = 1.0;
     }
     else
     {
-        pid_output.linear.z = std::min(-z_act/tau,zdot_touchdown);
+        pid_output.linear.z = std::min(-z_act/(0.7*tau),zdot_touchdown);
     }
 
-    ROS_INFO("pid out = %.2f, z_act = %.2f, -z/tau = %.2f, on_ground = %d",pid_output.linear.z, z_act, -z_act/tau, on_ground);
+
+    if(z_act<z_ge && !in_ge)
+    {
+        t_in_ge = ros::Time::now();
+        in_ge = 1;
+        ROS_INFO("in 1");
+    }
+    else if (z_act>z_ge && ((ros::Time::now() - t_in_ge).toSec() > 1.0))
+    {
+        in_ge = 0;
+        ROS_INFO("in 3");
+    }
+    else if(in_ge)
+    {
+        dt_ge = ros::Time::now() - t_in_ge;
+        pid_output.linear.z = pid_output.linear.z - 0.1*dt_ge.toSec();
+        ROS_INFO("in 2");
+    }
+
+
+
+    ROS_INFO("pid out = %.2f, z_act = %.2f, -z/tau = %.2f, in_ge = %d, pid_add = %.2f, t_in_ge = %.2f, dt_ge = %.2f, t = %.2f",pid_output.linear.z, z_act, -z_act/tau, in_ge, pid_output.linear.z - 0.1*dt_ge.toSec(), t_in_ge.toSec(), dt_ge.toSec(), (ros::Time::now() - t_in_ge).toSec() );
 
         // Re-assign the times
     oldtime = newtime;
