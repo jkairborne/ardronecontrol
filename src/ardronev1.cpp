@@ -105,15 +105,15 @@ double y_des = 1.0;
     //Section for Simon's landing controller:
     double z_act = pose_fixt.pose.position.z;
     // Parameters to be modified
-    double tau = 0.5;
+    double tau = 0.75;
     double zdot_initial = -0.7;
     double zdot_touchdown = -0.07;
 
 
     double z_flare = -zdot_initial*0.7*tau;
-    double z_land = 0.03;
+    double z_land = 0.02;
     
-    double z_ge = 0.15;
+    double z_ge = 0.25;
 
 
     if (z_act < z_land && !on_ground)
@@ -137,23 +137,22 @@ double y_des = 1.0;
     {
         t_in_ge = ros::Time::now();
         in_ge = 1;
-        ROS_INFO("in 1");
     }
     else if (z_act>z_ge && ((ros::Time::now() - t_in_ge).toSec() > 1.0))
     {
         in_ge = 0;
-        ROS_INFO("in 3");
     }
     else if(in_ge)
     {
         dt_ge = ros::Time::now() - t_in_ge;
-        pid_output.linear.z = pid_output.linear.z - 0.1*dt_ge.toSec();
-        ROS_INFO("in 2");
+        pid_output.linear.z = pid_output.linear.z - (0.19/0.7)*dt_ge.toSec();
+        pid_output.linear.z = std::max(pid_output.linear.z,-1.0);
     }
 
 
+    //ROS_INFO("pid out = %.2f, z_act = %.2f, in_ge = %d, pid_add = %.2f, dt_ge = %.2f, t = %.2f",pid_output.linear.z, z_act, in_ge, pid_output.linear.z - 0.1*dt_ge.toSec(), dt_ge.toSec(), (ros::Time::now() - t_in_ge).toSec() );
 
-    ROS_INFO("pid out = %.2f, z_act = %.2f, -z/tau = %.2f, in_ge = %d, pid_add = %.2f, t_in_ge = %.2f, dt_ge = %.2f, t = %.2f",pid_output.linear.z, z_act, -z_act/tau, in_ge, pid_output.linear.z - 0.1*dt_ge.toSec(), t_in_ge.toSec(), dt_ge.toSec(), (ros::Time::now() - t_in_ge).toSec() );
+   // ROS_INFO("pid out = %.2f, z_act = %.2f, -z/tau = %.2f, in_ge = %d, pid_add = %.2f, t_in_ge = %.2f, dt_ge = %.2f, t = %.2f",pid_output.linear.z, z_act, -z_act/tau, in_ge, pid_output.linear.z - 0.1*dt_ge.toSec(), t_in_ge.toSec(), dt_ge.toSec(), (ros::Time::now() - t_in_ge).toSec() );
 
         // Re-assign the times
     oldtime = newtime;

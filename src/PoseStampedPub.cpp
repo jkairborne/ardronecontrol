@@ -20,13 +20,12 @@ int main(int argc, char **argv)
     geometry_msgs::PoseStamped msg;
     msg.header.stamp = ros::Time::now();
     msg.pose.position.x = 1;
-    msg.pose.position.y = 1*cos(time);
+    msg.pose.position.y = 0.8-0.03*count;
     msg.pose.position.z = 1;
     msg.pose.orientation.x = 0;
     msg.pose.orientation.y = 0;
     msg.pose.orientation.z = 0;
     msg.pose.orientation.w = 1;
-    ROS_INFO("angle is %.2f, z is %.2f, count %d",time*180/3.1415926,msg.pose.position.y, count);
             
 
     time += 0.05*3.1415926;

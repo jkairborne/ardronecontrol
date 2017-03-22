@@ -3,7 +3,7 @@
   <include file="$(find vrpn_client_ros)/launch/sample.launch"/>
 
 <!-- Launch the ardronev1 node - our OptiTrack control -->
-  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" />
+  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" output="screen" />
 
   <node name="keyboard_controller" pkg="ardrone_tutorials" type="keyboard_controller.py" required="true">
 		<remap from="cmd_vel" to="key_output"/>
