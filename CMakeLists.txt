@@ -3,10 +3,15 @@ project(ardronecontrol)
 
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
+  dynamic_reconfigure
   geometry_msgs
   roscpp
   rospy
   std_msgs
+)
+
+generate_dynamic_reconfigure_options(
+    config/PIDset.cfg
 )
 
 catkin_package()
@@ -29,6 +34,10 @@ target_link_libraries(filter_empty_msgs ${catkin_LIBRARIES})
 
 add_executable(TwistPub src/TwistPub.cpp)
 target_link_libraries(TwistPub ${catkin_LIBRARIES})
+
+
+add_dependencies(ardronev1 ${PROJECT_NAME}_gencfg)
+
 # Make a PID library
 add_library(pid src/pid.cpp)
 target_link_libraries(pid ${catkin_LIBRARIES})

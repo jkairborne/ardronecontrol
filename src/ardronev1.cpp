@@ -9,6 +9,9 @@
 #include "std_msgs/String.h"
 #include "OptiTools.h"
 
+#include <dynamic_reconfigure/server.h>
+#include <ardronecontrol/PIDsetConfig.h>
+
 #include <stdio.h>
 #include <math.h>
 
@@ -33,10 +36,21 @@ ros::Duration dt_ros;
     double Ki_z = 0;
     double dt = 0.01;
     //
+// Define controller setpoints, in case there is no subscriber to callback
+double x_des = 1.0;
+double y_des = 1.0;
+double z_des = 0.4;
     // Create the PID class instances for x, y, and z:
     PID pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
     PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
     PID pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
+
+void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
+  ROS_INFO("Reconfigure Request: %f %f", 
+             config.Kp_x,config.set_x);
+  Kp_x = config.Kp_x;
+  x_des = config.set_x;
+}
 
 
 // Main function. rectifies coordinate system, converts quaternion to rpy, 
@@ -55,10 +69,6 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 //}
 
 
-// Define controller setpoints, in case there is no subscriber to callback
-double x_des = 1.0;
-double y_des = 1.0;
-double z_des = 0.4;
 
     // Assign new time into newtime global variable
     newtime = msg.header.stamp;
@@ -79,7 +89,7 @@ double z_des = 0.4;
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 //    ROS_INFO("Roll = %.2f, Pitch = %.2f, Yaw = %.2f",roll*180/3.1415926,pitch*180/3.1415926,yaw*180/3.1415926);
 
-
+    ROS_INFO("Kp_x = %.2f", Kp_x);
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
     delta_x = cos(yaw)*(pose_fixt.pose.position.x-x_des) + sin(yaw)*(pose_fixt.pose.position.y-y_des);
@@ -109,6 +119,12 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
+
+    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
+    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
+    f = boost::bind(&callback, _1, _2);
+    server.setCallback(f);
+
     oldtime = ros::Time::now();
     // Advertise the cmd vel node
     quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);

@@ -55,7 +55,7 @@ PIDImpl::PIDImpl( double dt, double max, double min, double Kp, double Kd, doubl
 {
 }
 
-double PIDImpl::calculate( double setpoint, double pv )
+double PIDImpl::calculate( double setpoint, double pv)
 {
     
     // Calculate error
