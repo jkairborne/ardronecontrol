@@ -1,3 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
 <launch>
 <!-- Launch the OptiTrack node - the OptiTrack must already be running -->
   <include file="$(find vrpn_client_ros)/launch/sample.launch"/>
@@ -19,5 +22,7 @@
         <rosparam file="$(find ardronecontrol)/config/twist_mux_topics.yaml" command="load"/>
         <rosparam file="$(find ardronecontrol)/config/twist_mux_locks.yaml" command="load"/>
     </node>
+
+  <node name="RMS_avg" pkg= "ardronecontrol" type="RMS_avg" output="screen"/>
 
 </launch>

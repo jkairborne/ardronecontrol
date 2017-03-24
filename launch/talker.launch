@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+
 <launch>
   <node name="PoseStampedPub" pkg="ardronecontrol" type="PoseStampedPub" />
   <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" output="screen" />

@@ -71,10 +71,9 @@ double sumArray(double arr[], int n)
 {
     int i;
     double temp=0;
-    double temp2 = 0;
     for(i=0;i<n;i++){temp+=arr[i];}
 
-    temp2 = (1/(double) n)*sqrt(temp);
+    temp = sqrt((1/(double) n)*temp);
     return temp;
 }
 
@@ -128,7 +127,7 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     if(k/100 == 1)
     {
         k-=100;
-        ROS_INFO("RMS = %.2f",current_RMS);
+        ROS_INFO("RMS = %.2f, delta_x = %.2f, delta_y = %.2f",current_RMS,delta_x,delta_y);
     }
 }
 
