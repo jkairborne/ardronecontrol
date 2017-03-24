@@ -25,8 +25,9 @@ ros::Subscriber pose_subscriber;
 
 double x_des = 1.0;
 double y_des = 1.0;
-double z_des = 1.0;
+double z_des = 0.4;
 double x_RMS[array_length];
+double y_RMS[array_length];
 int k = 0;
 
 void leftRotatebyOne(double arr[], int n, double new_val);
@@ -89,6 +90,7 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   ROS_INFO("Reconfigure Request setpoint: %f", 
              config.set_x);
   x_des = config.set_x;
+  y_des = config.set_y;
 }
 
 // Workhorse function. rectifies coordinate system, converts quaternion to rpy, 
@@ -120,14 +122,17 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     delta_z = pose_fixt.pose.position.z-z_des;
 
     leftRotatebyOne(x_RMS,array_length,delta_x);
-    double current_RMS;
-    current_RMS = sumArray(x_RMS,array_length);
+    leftRotatebyOne(y_RMS,array_length,delta_y);
+    double current_xRMS;
+    double current_yRMS;
+    current_xRMS = sumArray(x_RMS,array_length);
+    current_yRMS = sumArray(y_RMS,array_length);
 
     k+=1;
     if(k/100 == 1)
     {
         k-=100;
-        ROS_INFO("RMS = %.2f, delta_x = %.2f, delta_y = %.2f",current_RMS,delta_x,delta_y);
+        ROS_INFO("RMSx = %.2f, delta_x = %.2f, RMSy = %.2f, delta_y = %.2f",current_xRMS,delta_x,current_yRMS,delta_y);
     }
 }
 

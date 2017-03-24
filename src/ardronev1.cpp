@@ -47,7 +47,7 @@ double z_des = 0.4;
 void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 //  ROS_INFO("Reconfigure Request: %f %f", 
 //             config.Kp_x,config.set_x);
-//
+
 // Save the new configuration to doubles
   Kp_x = config.Kp_x;
   Kd_x = config.Kd_x;
@@ -56,6 +56,15 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   pidx.mod_params(Kp_x, Kd_x,Ki_x);
   // Change the desired positions
   x_des = config.set_x;
+
+// Save the new configuration to doubles
+  Kp_y = config.Kp_y;
+  Kd_y = config.Kd_y;
+  Ki_y = config.Ki_y;
+  // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
+  pidx.mod_params(Kp_y, Kd_y,Ki_y);
+  // Change the desired positions
+  y_des = config.set_y;
 }
 
 
