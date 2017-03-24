@@ -12,6 +12,7 @@ class PID
         // max - maximum value of manipulated variable
         // min - minimum value of manipulated variable
         PID( double dt, double max, double min, double Kp, double Kd, double Ki );
+        void mod_params(double new_Kp, double new_Kd, double new_Ki);
 
         // Returns the manipulated variable given a setpoint and current process value
         double calculate( double setpoint, double pv );

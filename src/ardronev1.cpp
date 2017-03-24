@@ -22,8 +22,6 @@ ros::Subscriber pose_subscriber;
 ros::Time newtime, oldtime;
 ros::Duration dt_ros;
 
-  
-
     // Define controller gains
     double Kp_x = 0.4;
     double Kd_x = 0.8;
@@ -45,10 +43,18 @@ double z_des = 0.4;
     PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
     PID pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
 
+    // This is the callback from the parameter server
 void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
-  ROS_INFO("Reconfigure Request: %f %f", 
-             config.Kp_x,config.set_x);
+//  ROS_INFO("Reconfigure Request: %f %f", 
+//             config.Kp_x,config.set_x);
+//
+// Save the new configuration to doubles
   Kp_x = config.Kp_x;
+  Kd_x = config.Kd_x;
+  Ki_x = config.Ki_x;
+  // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
+  pidx.mod_params(Kp_x, Kd_x,Ki_x);
+  // Change the desired positions
   x_des = config.set_x;
 }
 
@@ -62,13 +68,11 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     geometry_msgs::Quaternion GMquat;
     
 
-//Need to have all three gains have the same sign
-//if ( !((Kp_xy<=0. && Ki_xy<=0. && Kd_xy<=0.) || (Kp_xy>=0. && Ki_xy>=0. && Kd_xy>=0.) || (Kp_z<=0. && Ki_z<=0. && Kd_z<=0.) || (Kp_z>=0. && Ki_z>=0. && Kd_z>=0.)) )
-//{
-//   ROS_WARN("All three gains (Kp, Ki, Kd) should have the same sign for stability.");
-//}
-
-
+    // Need to have all three gains have the same sign
+    if ( !((Kp_x<=0. && Ki_x<=0. && Kd_x<=0.) || (Kp_x>=0. && Ki_x>=0. && Kd_x>=0.) || (Kp_y<=0. && Ki_y<=0. && Kd_y<=0.) || (Kp_y>=0. && Ki_y>=0. && Kd_y>=0.) || (Kp_z<=0. && Ki_z<=0. && Kd_z<=0.) || (Kp_z>=0. && Ki_z>=0. && Kd_z>=0.)) )
+    {
+        ROS_WARN("All three gains (Kp, Ki, Kd) should have the same sign for stability.");
+    }
 
     // Assign new time into newtime global variable
     newtime = msg.header.stamp;
@@ -82,21 +86,17 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion
     tf::Quaternion quat;
     tf::quaternionMsgToTF(GMquat, quat);
-//    quat = tf::Quaternion(quattemp.x(),-quattemp.z(),quattemp.y(),quattemp.w());
 
     // the tf::Quaternion has a method to acess roll pitch and yaw, which we use here
     double roll, pitch, yaw;
     tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
-//    ROS_INFO("Roll = %.2f, Pitch = %.2f, Yaw = %.2f",roll*180/3.1415926,pitch*180/3.1415926,yaw*180/3.1415926);
 
-    ROS_INFO("Kp_x = %.2f", Kp_x);
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
     delta_x = cos(yaw)*(pose_fixt.pose.position.x-x_des) + sin(yaw)*(pose_fixt.pose.position.y-y_des);
     delta_y = -sin(yaw)*(pose_fixt.pose.position.x-x_des) + cos(yaw)*(pose_fixt.pose.position.y-y_des);
     delta_z = pose_fixt.pose.position.z-z_des;
 
-//    ROS_INFO("dt = %.2f, delta_x = %.2f, delta_y = %.2f",dt,delta_x,delta_y);
 
     // Create the output message to be published
     geometry_msgs::Twist pid_output;
@@ -120,6 +120,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
 
+    // These four lines set up the dynamic reconfigure server
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
     f = boost::bind(&callback, _1, _2);

@@ -1,4 +1,5 @@
 <launch>
   <node name="PoseStampedPub" pkg="ardronecontrol" type="PoseStampedPub" />
   <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" output="screen" />
+  <node name="RMS_avg" pkg="ardronecontrol" type="RMS_avg" output="screen" />
 </launch>

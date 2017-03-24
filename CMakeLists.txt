@@ -35,6 +35,8 @@ target_link_libraries(filter_empty_msgs ${catkin_LIBRARIES})
 add_executable(TwistPub src/TwistPub.cpp)
 target_link_libraries(TwistPub ${catkin_LIBRARIES})
 
+add_executable(RMS_avg src/RMS_avg.cpp)
+target_link_libraries(RMS_avg ${catkin_LIBRARIES})
 
 add_dependencies(ardronev1 ${PROJECT_NAME}_gencfg)
 

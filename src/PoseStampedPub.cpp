@@ -12,7 +12,7 @@ int main(int argc, char **argv)
   
   ros::Publisher chatter_pub = n.advertise<geometry_msgs::PoseStamped>("vrpn_client_node/Ardrone/pose", 5);
 
-  ros::Rate loop_rate(1);
+  ros::Rate loop_rate(100);
   int count =0;
   while (ros::ok())
   {
