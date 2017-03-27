@@ -30,6 +30,7 @@ PID::PID( double dt, double max, double min, double Kp, double Kd, double Ki )
 {
     pimpl = new PIDImpl(dt,max,min,Kp,Kd,Ki);
 }
+
 double PID::calculate( double setpoint, double pv )
 {
     return pimpl->calculate(setpoint,pv);

@@ -16,57 +16,98 @@
 #include <stdio.h>
 #include <math.h>
 
-// Here I use global publisher and subscriber, since I want to access the
-// publisher in the function MsgCallback:
-ros::Publisher quad_twist;
-ros::Publisher new_gains;
-ros::Subscriber pose_subscriber;
-ros::Time newtime, oldtime;
-ros::Duration dt_ros;
+class SubscribeAndPublish
+{
+    ros::NodeHandle n_; 
+    ros::Publisher pub_;
+    ros::Publisher quad_twist;
+    ros::Publisher new_gains; 
+    ros::Subscriber sub_;
+    ros::Time newtime, oldtime;
+    ros::Duration dt_ros;
+public:
+    SubscribeAndPublish();
+    void callback(ardronecontrol::PIDsetConfig &config, uint32_t level);
+    void MsgCallback(const geometry_msgs::PoseStamped msg);
 
     // Define controller gains
-    double Kp_x = 0.4;
-    double Kd_x = 0.8;
-    double Ki_x = 0.0;
-    double Kp_y = 0.4;
-    double Kd_y = 0.8;
-    double Ki_y = 0.0;
-    double Kp_z = 0.7;
-    double Kd_z = 0;
-    double Ki_z = 0;
-    double dt = 0.01;
+    double Kp_x;
+    double Kd_x;
+    double Ki_x;
+    double Kp_y;
+    double Kd_y;
+    double Ki_y;
+    double Kp_z;
+    double Kd_z;
+    double Ki_z;
+    double dt;
     //
 // Define controller setpoints, in case there is no subscriber to callback
-double x_des = 1.0;
-double y_des = 1.0;
-double z_des = 0.4;
+    double x_des;
+    double y_des;
+    double z_des;
     // Create the PID class instances for x, y, and z:
     PID pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
     PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
     PID pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
 
-    // This is the callback from the parameter server
-void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
-//  ROS_INFO("Reconfigure Request: %f %f", 
-//             config.Kp_x,config.set_x);
+    // These four lines set up the dynamic reconfigure server
+//    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
+//    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
+};//End of class SubscribeAndPublish
 
-// Save the new configuration to doubles
-  Kp_x = config.Kp_x;
-  Kd_x = config.Kd_x;
-  Ki_x = config.Ki_x;
-  // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
-  pidx.mod_params(Kp_x, Kd_x,Ki_x);
-  // Change the desired positions
-  x_des = config.set_x;
+SubscribeAndPublish::SubscribeAndPublish()
+{
+    // Advertise the cmd vel and new gains node
+    quad_twist = n_.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
+    new_gains = n_.advertise<geometry_msgs::TwistStamped>("gain_changer", 5);
+    // Subscribe to the Ardrone data incoming from the OptiTrack
+    ros::Subscriber pose_subscriber = n_.subscribe("/vrpn_client_node/Ardrone/pose", 1, &SubscribeAndPublish::MsgCallback,this);
 
-// Save the new configuration to doubles
-  Kp_y = config.Kp_y;
-  Kd_y = config.Kd_y;
-  Ki_y = config.Ki_y;
-  // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
-  pidx.mod_params(Kp_y, Kd_y,Ki_y);
-  // Change the desired positions
-  y_des = config.set_y;
+    Kp_x = 0.4;
+    Kd_x = 0.8;
+    Ki_x = 0.0;
+    Kp_y = 0.4;
+    Kd_y = 0.8;
+    Ki_y = 0.0;
+    Kp_z = 0.7;
+    Kd_z = 0;
+    Ki_z = 0;
+
+    oldtime = ros::Time::now();
+    dt = 0.01;
+
+//    f = boost::bind(&callback, _1, _2);
+//    server.setCallback(f);
+
+    // Define controller setpoints, in case there is no subscriber to callback
+    x_des = 1.0;
+    y_des = 1.0;
+    z_des = 0.4;
+    // Create the PID class instances for x, y, and z:
+    pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
+    pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
+    pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
+  } // End of SubscribeAndPublish constructor
+
+void SubscribeAndPublish::callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
+    // Save the new configuration to doubles
+    Kp_x = config.Kp_x;
+    Kd_x = config.Kd_x;
+    Ki_x = config.Ki_x;
+    // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
+    pidx.mod_params(Kp_x, Kd_x,Ki_x);
+    // Change the desired positions
+    x_des = config.set_x;
+
+    // Save the new configuration to doubles
+    Kp_y = config.Kp_y;
+    Kd_y = config.Kd_y;
+    Ki_y = config.Ki_y;
+    // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
+    pidx.mod_params(Kp_y, Kd_y,Ki_y);
+    // Change the desired positions
+    y_des = config.set_y;
 
 
   // Create and publish the new gains to a TwistStamped method:
@@ -80,13 +121,12 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   newgains.twist.angular.z = Ki_y;
 
   new_gains.publish(newgains);
-}
-
+} // End of the dynamic reconfigure callback
 
 // Main function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
 // outputs the message onto a "/cmd_vel" topic.
-void MsgCallback(const geometry_msgs::PoseStamped msg)
+void SubscribeAndPublish::MsgCallback(const geometry_msgs::PoseStamped msg)
 {
     geometry_msgs::PoseStamped pose_fixt;
     geometry_msgs::Quaternion GMquat;
@@ -137,26 +177,14 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 
     // publish PID output:
     quad_twist.publish(pid_output);
-}
+}// End of MsgCallback
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
 
-    // These four lines set up the dynamic reconfigure server
-    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
-    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
-    f = boost::bind(&callback, _1, _2);
-    server.setCallback(f);
-
-    oldtime = ros::Time::now();
-    // Advertise the cmd vel node
-    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
-    new_gains = n.advertise<geometry_msgs::TwistStamped>("gain_changer", 5);
-    // Subscribe to the Ardrone data incoming from the OptiTrack
-    pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);
-
+    SubscribeAndPublish SAPObject;
 
     ros::spin();
 
