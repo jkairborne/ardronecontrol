@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<launch>
+<!-- Need to include the turtlebot_bringup minimal.launch file -->
+	<include file="$(find turtlebot_bringup)/launch/minimal.launch"/> 
+
+<!-- Launch the OptiTrack node - the OptiTrack must already be running -->
+  <include file="$(find vrpn_client_ros)/launch/sample.launch"/>
+
+<!-- Launch the ardronev1 node - our OptiTrack control -->
+  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" />
+
+<!-- Launch the Roomba node - the roomba control node -->
+  <node name="Roomba_node" pkg="ardronecontrol" type="roomba_node" />
+<!-- Launch the yawcombine node - to merge OptiTrack xyz/visual yaw control -->
+  <node name="YawCombine" pkg="ardronecontrol" type="yawcombine" />
+<!-- Launch the Yawvis node - outputs a yaw command to the ardrone control -->
+  <node name="yaw_vis" pkg="ardronecontrol" type="yaw_vis" output="screen" />
+
+  <node name="keyboard_controller" pkg="ardrone_tutorials" type="keyboard_controller.py" required="true">
+		<remap from="cmd_vel" to="key_output"/>
+  </node>
+  <include file="$(find visual_servoing_ardrone)/launch/ardrone.launch"/>
+
+    <node name="filter_empty_msgs" pkg="ardronecontrol" type="filter_empty_msgs"/>
+
+<!-- This launches the twist_mux node, giving our keyboard controller priority over OptiTrack control -->
+    <node name="vel_mux" pkg="twist_mux" type="twist_mux">
+        <remap from="twist" to="twist_mux/cmd_vel"/>
+	<remap from="cmd_vel_out" to="cmd_vel"/>
+        <rosparam file="$(find ardronecontrol)/config/twist_mux_topics.yaml" command="load"/>
+        <rosparam file="$(find ardronecontrol)/config/twist_mux_locks.yaml" command="load"/>
+    </node>
+
+
+
+<!--  <node name="RMS_avg" pkg= "ardronecontrol" type="RMS_avg" output="screen"/> -->
+
+</launch>

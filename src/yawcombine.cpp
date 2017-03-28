@@ -2,9 +2,9 @@
 #include "geometry_msgs/Twist.h"
 #include "std_msgs/Float64.h"
 
-#define OPTI_TOPIC "/cmd_vel_opti"
+#define OPTI_TOPIC "/cmd_vel_opti1"
 #define YAW_TOPIC "/visual_yaw"
-#define OUTPUT_TOPIC "/cmd_vel"
+#define OUTPUT_TOPIC "/cmd_vel_opti"
 
 class SubscribeAndPublish
 {

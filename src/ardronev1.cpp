@@ -39,7 +39,7 @@ ros::Duration dt_ros;
 // Define controller setpoints, in case there is no subscriber to callback
 double x_des = 1.0;
 double y_des = 1.0;
-double z_des = 0.4;
+double z_des = 0.8;
     // Create the PID class instances for x, y, and z:
     PID pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
     PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
@@ -144,6 +144,10 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
 
+    // Advertise the cmd vel node
+    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
+    new_gains = n.advertise<geometry_msgs::TwistStamped>("gain_changer", 5);
+
     // These four lines set up the dynamic reconfigure server
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
@@ -151,9 +155,6 @@ int main(int argc, char **argv)
     server.setCallback(f);
 
     oldtime = ros::Time::now();
-    // Advertise the cmd vel node
-    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
-    new_gains = n.advertise<geometry_msgs::TwistStamped>("gain_changer", 5);
     // Subscribe to the Ardrone data incoming from the OptiTrack
     pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);
 

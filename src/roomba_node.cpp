@@ -6,6 +6,9 @@
 #include <math.h>
 #include <sstream>
 
+#define ROOMBA_CMD "/cmd_vel_mux/input/teleop"
+#define ROOMBA_VALS "/roomba_values"
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "roomba_node");
@@ -13,9 +16,9 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
 
   // Create a Publisher to command the roomba
-  ros::Publisher cmd_to_roomba = n.advertise<geometry_msgs::Twist>("/cmd_vel_mux/input/teleop", 1000);
+  ros::Publisher cmd_to_roomba = n.advertise<geometry_msgs::Twist>(ROOMBA_CMD, 3);
   // Create a Vector3 containing position (null in this case), angular rate and angular acceleration
-  ros::Publisher R_values = n.advertise<geometry_msgs::Vector3>("/roomba_values", 1000);
+  ros::Publisher R_values = n.advertise<geometry_msgs::Vector3>(ROOMBA_VALS, 3);
 
   ros::Rate loop_rate(100);
 
@@ -30,7 +33,7 @@ int main(int argc, char **argv)
     geometry_msgs::Vector3 ang_vals;
     std_msgs::Float64 xvel_control;
     float cmdx = 0.0;
-    float cmdz = 0.25*sin(count/200.0);
+    float cmdz = 1*sin(count/400.0);
 
 	// Populate the Twist message to be sent to the Roomba itself
     cmdvel.linear.x = cmdx;
