@@ -41,6 +41,12 @@ target_link_libraries(RMS_avg ${catkin_LIBRARIES})
 add_executable(yawcombine src/yawcombine.cpp)
 target_link_libraries(yawcombine ${catkin_LIBRARIES})
 
+add_executable(yaw_vis src/yaw_vis.cpp)
+target_link_libraries(yaw_vis ${catkin_LIBRARIES})
+
+add_executable(roomba_node src/roomba_node.cpp)
+target_link_libraries(roomba_node ${catkin_LIBRARIES})
+
 #add_executable(bardronev1 src/bardronev1.cpp)
 #target_link_libraries(bardronev1 ${catkin_LIBRARIES})
 
