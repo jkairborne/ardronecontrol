@@ -38,8 +38,14 @@ target_link_libraries(TwistPub ${catkin_LIBRARIES})
 add_executable(RMS_avg src/RMS_avg.cpp)
 target_link_libraries(RMS_avg ${catkin_LIBRARIES})
 
-add_executable(bardronev1 src/bardronev1.cpp)
-target_link_libraries(bardronev1 ${catkin_LIBRARIES})
+add_executable(yaw_vis src/yaw_vis.cpp)
+target_link_libraries(yaw_vis ${catkin_LIBRARIES})
+
+add_executable(roomba_node src/roomba_node.cpp)
+target_link_libraries(roomba_node ${catkin_LIBRARIES})
+
+#add_executable(bardronev1 src/bardronev1.cpp)
+#target_link_libraries(bardronev1 ${catkin_LIBRARIES})
 
 add_dependencies(ardronev1 ${PROJECT_NAME}_gencfg)
 

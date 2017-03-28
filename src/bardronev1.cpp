@@ -47,9 +47,9 @@ public:
     double y_des;
     double z_des;
     // Create the PID class instances for x, y, and z:
-    PID pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
-    PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
-    PID pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
+    PID pidx = PID(0.01,1,-1,1,1,1);
+//    PID pidy;
+  //  PID pidz;
 
     // These four lines set up the dynamic reconfigure server
 //    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
@@ -85,9 +85,9 @@ SubscribeAndPublish::SubscribeAndPublish()
     y_des = 1.0;
     z_des = 0.4;
     // Create the PID class instances for x, y, and z:
-    pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
-    pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
-    pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
+    pidx.mod_params(Kp_x,Kd_x,Ki_x);
+//erd    pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
+//erd    pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
   } // End of SubscribeAndPublish constructor
 
 void SubscribeAndPublish::callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
@@ -167,8 +167,8 @@ void SubscribeAndPublish::MsgCallback(const geometry_msgs::PoseStamped msg)
 
     // Populate the output message
     pid_output.linear.x = pidx.calculate(0,delta_x);
-    pid_output.linear.y = pidy.calculate(0,delta_y);
-    pid_output.linear.z = pidz.calculate(0,delta_z);
+//erd    pid_output.linear.y = pidy.calculate(0,delta_y);
+//erd    pid_output.linear.z = pidz.calculate(0,delta_z);
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
 
