@@ -18,6 +18,9 @@
 <!-- Launch the Yawvis node - outputs a yaw command to the ardrone control -->
   <node name="yaw_vis" pkg="ardronecontrol" type="yaw_vis" output="screen" />
 
+<!-- Launch the rebr_rpy node - accepts OptiTrack data, rebroadcasts in xyzrpy -->
+  <node name="rebr_rpy" pkg="ardronecontrol" type="rebr_rpy" output="screen" />
+
   <node name="keyboard_controller" pkg="ardrone_tutorials" type="keyboard_controller.py" required="true">
 		<remap from="cmd_vel" to="key_output"/>
   </node>

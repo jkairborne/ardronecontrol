@@ -9,6 +9,12 @@
 #define ARDRONETOPIC "/ardrone/navdata"
 #define ROOMBATOPIC "/roomba_values"
 
+// Define a clip function that will clip number n to remain within lower and upper
+// In our case, used to keep the output command 
+float clip(float n, float lower, float upper) {
+      return std::max(lower, std::min(n, upper));
+}
+
 class YawMessage
 {
 public:
@@ -17,10 +23,10 @@ YawMessage()
     pubyaw_ = n_.advertise<std_msgs::Float64>(PUBTOPIC, 1);
     
     // Specify which control law to use
-    CtrlLaw =2;
+    CtrlLaw =0;
 
     // Define constant gain parameters
-    Kp1 = 0.02;
+    Kp1 = 0.01;
     Kp2 = 0.1;
     Kp3 = 1;
 
@@ -32,28 +38,28 @@ YawMessage()
 void callback(const ardrone_autonomy::Navdata& msg)
 {
 //  geometry_msgs::Twist zerotwist;
-if (msg.tags_count==0) {return;}
+if (msg.tags_count==0) 
+{
+    msgyaw.data = 0;
+    pubyaw_.publish(msgyaw);
+    return;
+}
 
-ROS_INFO("in callback for pubyaw");
 if(CtrlLaw ==0)
 {
     msgyaw.data = Kp1*msg.tags_orientation[0];
-    pubyaw_.publish(msgyaw);
-    ROS_INFO("In callback for pubyaw, where I should be");
 } // end of CtrlLaw ==0
 else if(CtrlLaw == 1)
 {
-    ROS_INFO("In callback for pubyaw for law 2");
-    msgyaw.data = Kp1*msg.tags_orientation[0]+Kp2*R_yawvel;
     // Need to do more processing here
-    pubyaw_.publish(msgyaw);
+    msgyaw.data = Kp1*msg.tags_orientation[0]+Kp2*R_yawvel;
 }// end of CtrlLaw ==1
 else if(CtrlLaw == 2)
 {
-    ROS_INFO("This still needs to be coded");
     msgyaw.data = Kp1*msg.tags_orientation[0]+Kp2*R_yawvel+Kp3*R_yawacc;
-    pubyaw_.publish(msgyaw);
 }
+    msgyaw.data = clip(msgyaw.data,-1,+1);
+    pubyaw_.publish(msgyaw);
 
 } // End of the callback
 

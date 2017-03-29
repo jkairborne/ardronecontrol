@@ -104,7 +104,7 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     dt = dt_ros.toSec();
 
     // Here the Opti_Rect function is defined in OptiTools.h, and simply adjusts the coordinate system to be the one that we are used to working with.
-    pose_fixt = Opti_Rect(msg);
+    pose_fixt = Opti_Rect_quat(msg);
     GMquat = pose_fixt.pose.orientation;
 
     // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     // Advertise the cmd vel node
-    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
+    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti1", 5);
     new_gains = n.advertise<geometry_msgs::TwistStamped>("gain_changer", 5);
 
     // These four lines set up the dynamic reconfigure server

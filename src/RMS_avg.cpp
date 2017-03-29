@@ -102,7 +102,7 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     geometry_msgs::Quaternion GMquat;
 
     // Here the Opti_Rect function is defined in OptiTools.h, and simply adjusts the coordinate system to be the one that we are used to working with.
-    pose_fixt = Opti_Rect(msg);
+    pose_fixt = Opti_Rect_quat(msg);
     GMquat = pose_fixt.pose.orientation;
 
     // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion

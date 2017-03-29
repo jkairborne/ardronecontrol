@@ -47,6 +47,9 @@ target_link_libraries(yaw_vis ${catkin_LIBRARIES})
 add_executable(roomba_node src/roomba_node.cpp)
 target_link_libraries(roomba_node ${catkin_LIBRARIES})
 
+add_executable(rebr_rpy src/rebr_rpy.cpp)
+target_link_libraries(rebr_rpy ${catkin_LIBRARIES})
+
 #add_executable(bardronev1 src/bardronev1.cpp)
 #target_link_libraries(bardronev1 ${catkin_LIBRARIES})
 

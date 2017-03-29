@@ -12,7 +12,7 @@ int main(int argc, char **argv)
   
   ros::Publisher chatter_pub = n.advertise<geometry_msgs::PoseStamped>("vrpn_client_node/Ardrone/pose", 5);
 
-  ros::Rate loop_rate(100);
+  ros::Rate loop_rate(1);
   int count =0;
   while (ros::ok())
   {
@@ -22,9 +22,9 @@ int main(int argc, char **argv)
     msg.pose.position.y = 0.5;
     msg.pose.position.z = 0.3;
     msg.pose.orientation.x = 0;
-    msg.pose.orientation.y = 0;
+    msg.pose.orientation.y = 0.707;
     msg.pose.orientation.z = 0;
-    msg.pose.orientation.w = 1;
+    msg.pose.orientation.w = 0.707;
 
     count++;
     chatter_pub.publish(msg);

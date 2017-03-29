@@ -33,7 +33,7 @@ int main(int argc, char **argv)
     geometry_msgs::Vector3 ang_vals;
     std_msgs::Float64 xvel_control;
     float cmdx = 0.0;
-    float cmdz = 1*sin(count/400.0);
+    float cmdz = 0.5*sin(count/500.0);
 
 	// Populate the Twist message to be sent to the Roomba itself
     cmdvel.linear.x = cmdx;
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     ang_vals.y = cmdz;
     newtime = ros::Time::now();
 
-    timeDiff = newtime - oldtime;
+    timeDiff = oldtime - newtime;
     ang_vals.z = (oldvel-cmdz)/timeDiff.toSec();
 
 	//Publish all three messages
