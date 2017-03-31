@@ -1,6 +1,7 @@
 #ifndef _PID_SOURCE_
 #define _PID_SOURCE_
 
+#include "ros/ros.h"
 #include <iostream>
 #include <cmath>
 #include "pid.h"
@@ -14,6 +15,7 @@ class PIDImpl
         ~PIDImpl();
         double calculate( double setpoint, double pv );
         void set_gains(double new_Kp, double new_Kd, double new_Ki);
+        void set_dt(double dt);
             
     private:
         double _dt;
@@ -31,11 +33,12 @@ PID::PID( double dt, double max, double min, double Kp, double Kd, double Ki )
     pimpl = new PIDImpl(dt,max,min,Kp,Kd,Ki);
 }
 
-double PID::calculate( double setpoint, double pv )
+double PID::calculate( double setpoint, double pv, double dt)
 {
+    pimpl->set_dt(dt);
     return pimpl->calculate(setpoint,pv);
-    cout << "In the calculate block";
 }
+
 PID::~PID() 
 {
     delete pimpl;
@@ -48,7 +51,6 @@ void PID::mod_params(double new_Kp, double new_Kd, double new_Ki)
 }
 
 
-
 void PIDImpl::set_gains(double new_Kp, double new_Kd, double new_Ki)
 {
     _Kp = new_Kp;
@@ -57,6 +59,17 @@ void PIDImpl::set_gains(double new_Kp, double new_Kd, double new_Ki)
 
     // This is to "reset" the integral gain - or else it can have significant inertia from a previous setting. In fact should probably implement some min/max on the integral gains...
     _integral = 0;
+}
+
+/*void PID::set_dt(double dt)
+{
+    pimpl->set_dt(dt);
+}
+*/
+void PIDImpl::set_dt(double dt)
+{
+    _dt = dt;
+    ROS_INFO("IN dt change area");
 }
 
 /**

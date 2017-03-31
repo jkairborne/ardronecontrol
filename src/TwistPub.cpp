@@ -2,6 +2,8 @@
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/Vector3.h"
 
+#define ROOMBA_CMD "/cmd_vel_mux/input/teleop"
+
 int main(int argc, char **argv)
 {
 
@@ -10,31 +12,40 @@ int main(int argc, char **argv)
   ros::NodeHandle n;
 
   
-  ros::Publisher chatter_pub1 = n.advertise<geometry_msgs::Twist>("chat1", 1);
-  ros::Publisher chatter_pub2 = n.advertise<geometry_msgs::Twist>("chat2", 1);
-  ros::Publisher chatter_pub3 = n.advertise<geometry_msgs::Twist>("chat3", 1);
+  ros::Publisher chatter_pub1 = n.advertise<geometry_msgs::Twist>(ROOMBA_CMD, 1);
 
   ros::Rate loop_rate(5);
+  int count = 0;
   while (ros::ok())
   {
-    geometry_msgs::Twist msg1;
-    geometry_msgs::Twist msg2;
-    geometry_msgs::Twist msg3;
-    msg1.linear.x = 1;
-    msg2.linear.x = 1;
-    msg2.linear.y = 1;
-    msg3.linear.x = 1;
-    msg3.linear.y = 1;
-    msg3.linear.z = 1;
 
-    chatter_pub1.publish(msg1);
-    chatter_pub2.publish(msg2);
-    chatter_pub3.publish(msg3);
+    geometry_msgs::Twist msg;
+
+    msg.linear.x = 0;
+    msg.linear.y = 0;
+    msg.linear.z = 0;
+    msg.angular.x = 0;
+    msg.angular.z = 0;
+    
+    if (count < 50) {msg.angular.z  = 0.1;}
+    else if (count < 100) {msg.angular.z = -0.1;}
+    else if (count < 150) {msg.angular.z = 1;}
+    else if (count < 200) {msg.angular.z = -1;}
+    else if (count < 250) {msg.angular.z = 0.5;}
+    else if (count < 300) {msg.angular.z = -0.5;}
+    else if (count < 350) {msg.angular.z = 0.75;}
+    else if (count < 400) {msg.angular.z = -0.75;}
+    else if (count < 450) {msg.angular.z = 0.25;}
+    else if (count < 500) {msg.angular.z = -0.25;}
+    else {msg.angular.z = 0;}
+
+
+    chatter_pub1.publish(msg);
 
     ros::spinOnce();
 
     loop_rate.sleep();
-
+    count++;
   }
 
 

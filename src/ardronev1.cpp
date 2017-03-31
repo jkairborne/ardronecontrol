@@ -126,9 +126,9 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
     geometry_msgs::Twist pid_output;
 
     // Populate the output message
-    pid_output.linear.x = pidx.calculate(0,delta_x);
-    pid_output.linear.y = pidy.calculate(0,delta_y);
-    pid_output.linear.z = pidz.calculate(0,delta_z);
+    pid_output.linear.x = pidx.calculate(0,delta_x, dt);
+    pid_output.linear.y = pidy.calculate(0,delta_y, dt);
+    pid_output.linear.z = pidz.calculate(0,delta_z, dt);
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
 

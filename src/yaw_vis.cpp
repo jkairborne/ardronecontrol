@@ -23,7 +23,7 @@ YawMessage()
     pubyaw_ = n_.advertise<std_msgs::Float64>(PUBTOPIC, 1);
     
     // Specify which control law to use
-    CtrlLaw =0;
+    CtrlLaw =1;
 
     // Define constant gain parameters
     Kp1 = 0.01;
@@ -45,18 +45,21 @@ if (msg.tags_count==0)
     return;
 }
 
+yaw = msg.tags_orientation[0];
+if(yaw >180){yaw-=360;}
+
 if(CtrlLaw ==0)
 {
-    msgyaw.data = Kp1*msg.tags_orientation[0];
+    msgyaw.data = Kp1*yaw;
 } // end of CtrlLaw ==0
 else if(CtrlLaw == 1)
 {
     // Need to do more processing here
-    msgyaw.data = Kp1*msg.tags_orientation[0]+Kp2*R_yawvel;
+    msgyaw.data = Kp1*yaw+Kp2*R_yawvel;
 }// end of CtrlLaw ==1
 else if(CtrlLaw == 2)
 {
-    msgyaw.data = Kp1*msg.tags_orientation[0]+Kp2*R_yawvel+Kp3*R_yawacc;
+    msgyaw.data = Kp1*yaw+Kp2*R_yawvel+Kp3*R_yawacc;
 }
     msgyaw.data = clip(msgyaw.data,-1,+1);
     pubyaw_.publish(msgyaw);
@@ -79,7 +82,7 @@ private:
   ros::Subscriber ardronesub;
   ros::Subscriber roombasub;
   std_msgs::Float64 msgyaw;
-  double R_yawvel, R_yawacc, CtrlLaw, Kp1, Kp2, Kp3;
+  double R_yawvel, R_yawacc, CtrlLaw, Kp1, Kp2, Kp3, yaw;
 };//End of class YawMessage
 
 int main(int argc, char **argv)

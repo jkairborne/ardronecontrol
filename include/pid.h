@@ -14,9 +14,10 @@ class PID
         PID( double dt, double max, double min, double Kp, double Kd, double Ki );
 //        PID() = default;
         void mod_params(double new_Kp, double new_Kd, double new_Ki);
+        void set_dt(double dt);
 
         // Returns the manipulated variable given a setpoint and current process value
-        double calculate( double setpoint, double pv );
+        double calculate( double setpoint, double pv, double dt );
         ~PID();
 
     private:
