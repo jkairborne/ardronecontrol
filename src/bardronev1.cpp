@@ -22,11 +22,14 @@ class SubscribeAndPublish
     ros::Publisher pub_;
     ros::Publisher quad_twist;
     ros::Publisher new_gains; 
-    ros::Subscriber sub_;
+    ros::Subscriber pose_subscriber;
     ros::Time newtime, oldtime;
     ros::Duration dt_ros;
 public:
     SubscribeAndPublish();
+ /*   dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
+    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
+*/
     void callback(ardronecontrol::PIDsetConfig &config, uint32_t level);
     void MsgCallback(const geometry_msgs::PoseStamped msg);
 
@@ -47,13 +50,12 @@ public:
     double y_des;
     double z_des;
     // Create the PID class instances for x, y, and z:
-    PID pidx = PID(0.01,1,-1,1,1,1);
-//    PID pidy;
-  //  PID pidz;
+    PID pidy;
+    PID pidz;
+    PID pidx;
 
-    // These four lines set up the dynamic reconfigure server
-//    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
-//    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
+
+
 };//End of class SubscribeAndPublish
 
 SubscribeAndPublish::SubscribeAndPublish()
@@ -62,7 +64,7 @@ SubscribeAndPublish::SubscribeAndPublish()
     quad_twist = n_.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
     new_gains = n_.advertise<geometry_msgs::TwistStamped>("gain_changer", 5);
     // Subscribe to the Ardrone data incoming from the OptiTrack
-    ros::Subscriber pose_subscriber = n_.subscribe("/vrpn_client_node/Ardrone/pose", 1, &SubscribeAndPublish::MsgCallback,this);
+    pose_subscriber = n_.subscribe("/vrpn_client_node/Ardrone/pose", 1, &SubscribeAndPublish::MsgCallback,this);
 
     Kp_x = 0.4;
     Kd_x = 0.8;
@@ -77,17 +79,15 @@ SubscribeAndPublish::SubscribeAndPublish()
     oldtime = ros::Time::now();
     dt = 0.01;
 
-//    f = boost::bind(&callback, _1, _2);
-//    server.setCallback(f);
 
     // Define controller setpoints, in case there is no subscriber to callback
     x_des = 1.0;
     y_des = 1.0;
     z_des = 0.4;
-    // Create the PID class instances for x, y, and z:
+    // Modify pid gains for pid class instances for x, y, and z:
     pidx.mod_params(Kp_x,Kd_x,Ki_x);
-//erd    pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
-//erd    pidz = PID(0.01,1,-1,Kp_z,Kd_z,Ki_z);
+    pidy.mod_params(Kp_y,Kd_y,Ki_y);
+    pidz.mod_params(Kp_z,Kd_z,Ki_z);
   } // End of SubscribeAndPublish constructor
 
 void SubscribeAndPublish::callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
@@ -130,7 +130,9 @@ void SubscribeAndPublish::MsgCallback(const geometry_msgs::PoseStamped msg)
 {
     geometry_msgs::PoseStamped pose_fixt;
     geometry_msgs::Quaternion GMquat;
-    
+ /*   dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
+    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;*/
+
 
     // Need to have all three gains have the same sign
     if ( !((Kp_x<=0. && Ki_x<=0. && Kd_x<=0.) || (Kp_x>=0. && Ki_x>=0. && Kd_x>=0.) || (Kp_y<=0. && Ki_y<=0. && Kd_y<=0.) || (Kp_y>=0. && Ki_y>=0. && Kd_y>=0.) || (Kp_z<=0. && Ki_z<=0. && Kd_z<=0.) || (Kp_z>=0. && Ki_z>=0. && Kd_z>=0.)) )
@@ -144,7 +146,7 @@ void SubscribeAndPublish::MsgCallback(const geometry_msgs::PoseStamped msg)
     dt = dt_ros.toSec();
 
     // Here the Opti_Rect function is defined in OptiTools.h, and simply adjusts the coordinate system to be the one that we are used to working with.
-    pose_fixt = Opti_Rect(msg);
+    pose_fixt = Opti_Rect_quat(msg);
     GMquat = pose_fixt.pose.orientation;
 
     // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion
@@ -167,8 +169,8 @@ void SubscribeAndPublish::MsgCallback(const geometry_msgs::PoseStamped msg)
 
     // Populate the output message
     pid_output.linear.x = pidx.calculate(0,delta_x);
-//erd    pid_output.linear.y = pidy.calculate(0,delta_y);
-//erd    pid_output.linear.z = pidz.calculate(0,delta_z);
+    pid_output.linear.y = pidy.calculate(0,delta_y);
+    pid_output.linear.z = pidz.calculate(0,delta_z);
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
 
@@ -185,6 +187,10 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     SubscribeAndPublish SAPObject;
+ /*   dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
+    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
+    f = boost::bind(&SubscribeAndPublish::callback, SAPObject, _1, _2);
+    server.setCallback(f);*/
 
     ros::spin();
 

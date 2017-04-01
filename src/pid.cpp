@@ -39,6 +39,12 @@ double PID::calculate( double setpoint, double pv, double dt)
     return pimpl->calculate(setpoint,pv);
 }
 
+// Here have the second version of calculate:
+double PID::calculate( double setpoint, double pv)
+{
+    return pimpl->calculate(setpoint,pv);
+}
+
 PID::~PID() 
 {
     delete pimpl;

@@ -39,7 +39,7 @@ ros::Duration dt_ros;
 // Define controller setpoints, in case there is no subscriber to callback
 double x_des = 1.0;
 double y_des = 1.0;
-double z_des = 0.8;
+double z_des = 0.6;
     // Create the PID class instances for x, y, and z:
     PID pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
     PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
@@ -64,7 +64,7 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   Kd_y = config.Kd_y;
   Ki_y = config.Ki_y;
   // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
-  pidx.mod_params(Kp_y, Kd_y,Ki_y);
+  pidy.mod_params(Kp_y, Kd_y,Ki_y);
   // Change the desired positions
   y_des = config.set_y;
 
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     // Advertise the cmd vel node
-    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti1", 5);
+    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
     new_gains = n.advertise<geometry_msgs::TwistStamped>("gain_changer", 5);
 
     // These four lines set up the dynamic reconfigure server
