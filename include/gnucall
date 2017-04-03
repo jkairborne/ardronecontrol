@@ -1,0 +1,17 @@
+set datafile separator ","
+set autoscale fix
+set key outside right center
+
+set term x11 0
+set key autotitle columnhead
+set title "X axis"
+first=0;
+offset=0;
+set xrange[50:70]
+
+func(x)=(offset=(first==0)?x:offset,first=1,x-offset)
+plot 'test2op.csv' using 1:6 with lines, 'test2op.csv' using 1:7 with lines, 'test2op.csv' using 1:5 with lines
+
+
+pause -1
+
