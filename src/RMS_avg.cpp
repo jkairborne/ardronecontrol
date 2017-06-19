@@ -6,7 +6,7 @@
 
 #include "pid.h"
 #include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/Quaternion.h"
 #include "tf/transform_datatypes.h"
 #include "OptiTools.h"
@@ -34,7 +34,7 @@ void leftRotatebyOne(double arr[], int n, double new_val);
 double sumArray(double arr[], int n);
 void printArray(double arr[], int size);
 void callback(ardronecontrol::PIDsetConfig &config, uint32_t level);
-void MsgCallback(const geometry_msgs::PoseStamped msg);
+void MsgCallback(const geometry_msgs::TransformStamped msg);
 
 int main(int argc, char **argv)
 {
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     server.setCallback(f);
 
     // Subscribe to the Ardrone data incoming from the OptiTrack
-    pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);
+    pose_subscriber = n.subscribe("/vicon/ARDroneThomas/ARDroneThomas", 5, MsgCallback);
     
 
     ros::spin();
@@ -96,14 +96,14 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 // Workhorse function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
 // outputs the message onto a "/cmd_vel" topic.
-void MsgCallback(const geometry_msgs::PoseStamped msg)
+void MsgCallback(const geometry_msgs::TransformStamped msg)
 {
-    geometry_msgs::PoseStamped pose_fixt;
+    geometry_msgs::TransformStamped pose_fixt;
     geometry_msgs::Quaternion GMquat;
 
     // Here the Opti_Rect function is defined in OptiTools.h, and simply adjusts the coordinate system to be the one that we are used to working with.
     pose_fixt = Opti_Rect(msg);
-    GMquat = pose_fixt.pose.orientation;
+    GMquat = pose_fixt.transform.rotation;
 
     // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion
     tf::Quaternion quat;
@@ -117,9 +117,9 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
-    delta_x = cos(yaw)*(pose_fixt.pose.position.x-x_des) + sin(yaw)*(pose_fixt.pose.position.y-y_des);
-    delta_y = -sin(yaw)*(pose_fixt.pose.position.x-x_des) + cos(yaw)*(pose_fixt.pose.position.y-y_des);
-    delta_z = pose_fixt.pose.position.z-z_des;
+    delta_x = cos(yaw)*(pose_fixt.transform.translation.x-x_des) + sin(yaw)*(pose_fixt.transform.translation.y-y_des);
+    delta_y = -sin(yaw)*(pose_fixt.transform.translation.x-x_des) + cos(yaw)*(pose_fixt.transform.translation.y-y_des);
+    delta_z = pose_fixt.transform.translation.z-z_des;
 
     leftRotatebyOne(x_RMS,array_length,delta_x);
     leftRotatebyOne(y_RMS,array_length,delta_y);
