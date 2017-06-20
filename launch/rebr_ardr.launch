@@ -6,12 +6,12 @@
   <include file="$(find vrpn_client_ros)/launch/sample.launch"/>
 
 <!-- Launch the ardronev1 node - our OptiTrack control -->
-  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" />
+  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" output = "screen"/>
 
   <node name="keyboard_controller" pkg="ardrone_tutorials" type="keyboard_controller.py" required="true">
 		<remap from="cmd_vel" to="key_output"/>
   </node>
-  <include file="$(find visual_servoing_ardrone)/launch/ardrone.launch"/>
+  <include file="$(find ardrone_autonomy)/launch/ardrone.launch"/>
 
     <node name="filter_empty_msgs" pkg="ardronecontrol" type="filter_empty_msgs"/>
 
@@ -22,7 +22,7 @@
         <rosparam file="$(find ardronecontrol)/config/twist_mux_topics.yaml" command="load"/>
         <rosparam file="$(find ardronecontrol)/config/twist_mux_locks.yaml" command="load"/>
     </node>
-
+<!--
   <node name="RMS_avg" pkg= "ardronecontrol" type="RMS_avg" output="screen"/>
-
+-->
 </launch>

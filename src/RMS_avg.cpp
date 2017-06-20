@@ -7,6 +7,7 @@
 #include "pid.h"
 #include "ros/ros.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/Quaternion.h"
 #include "tf/transform_datatypes.h"
 #include "OptiTools.h"
@@ -34,7 +35,14 @@ void leftRotatebyOne(double arr[], int n, double new_val);
 double sumArray(double arr[], int n);
 void printArray(double arr[], int size);
 void callback(ardronecontrol::PIDsetConfig &config, uint32_t level);
+
+#ifdef USEOPTI
 void MsgCallback(const geometry_msgs::PoseStamped msg);
+#endif
+#ifdef USEVICON
+void MsgCallback(const geometry_msgs::TransformStamped msg);
+#endif
+
 
 int main(int argc, char **argv)
 {
@@ -46,9 +54,14 @@ int main(int argc, char **argv)
     f = boost::bind(&callback, _1, _2);
     server.setCallback(f);
 
-    // Subscribe to the Ardrone data incoming from the OptiTrack
+    // Subscribe to the Ardrone data incoming from the OptiTrack/vicon
+    #ifdef USEOPTI
     pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);
+    #endif
     
+    #ifdef USEVICON
+    pose_subscriber = n.subscribe("/vicon/ARDroneThomas/ARDroneThomas", 5, MsgCallback);
+	#endif
 
     ros::spin();
 
@@ -96,6 +109,7 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 // Workhorse function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
 // outputs the message onto a "/cmd_vel" topic.
+#ifdef USEOPTI
 void MsgCallback(const geometry_msgs::PoseStamped msg)
 {
     geometry_msgs::PoseStamped pose_fixt;
@@ -135,4 +149,47 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
         ROS_INFO("RMSx = %.2f, delta_x = %.2f, RMSy = %.2f, delta_y = %.2f",current_xRMS,delta_x,current_yRMS,delta_y);
     }
 }
+#endif
+
+#ifdef USEVICON
+void MsgCallback(const geometry_msgs::TransformStamped msg)
+{
+    geometry_msgs::TransformStamped pose_fixt;
+    geometry_msgs::Quaternion GMquat;
+
+    // Here the Opti_Rect function is defined in OptiTools.h, and simply adjusts the coordinate system to be the one that we are used to working with.
+    pose_fixt = Opti_Rect(msg);
+    GMquat = pose_fixt.transform.rotation;
+
+    // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion
+    tf::Quaternion quat;
+    tf::quaternionMsgToTF(GMquat, quat);
+//    quat = tf::Quaternion(quattemp.x(),-quattemp.z(),quattemp.y(),quattemp.w());
+
+    // the tf::Quaternion has a method to acess roll pitch and yaw, which we use here
+    double roll, pitch, yaw;
+    tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+//    ROS_INFO("Roll = %.2f, Pitch = %.2f, Yaw = %.2f",roll*180/3.1415926,pitch*180/3.1415926,yaw*180/3.1415926);
+
+    // Calculate delta_x and delta_y in the body-fixed frame.
+    double delta_x,delta_y,delta_z;
+    delta_x = cos(yaw)*(pose_fixt.transform.translation.x-x_des) + sin(yaw)*(pose_fixt.transform.translation.y-y_des);
+    delta_y = -sin(yaw)*(pose_fixt.transform.translation.x-x_des) + cos(yaw)*(pose_fixt.transform.translation.y-y_des);
+    delta_z = pose_fixt.transform.translation.z-z_des;
+
+    leftRotatebyOne(x_RMS,array_length,delta_x);
+    leftRotatebyOne(y_RMS,array_length,delta_y);
+    double current_xRMS;
+    double current_yRMS;
+    current_xRMS = sumArray(x_RMS,array_length);
+    current_yRMS = sumArray(y_RMS,array_length);
+
+    k+=1;
+    if(k/100 == 1)
+    {
+        k-=100;
+        ROS_INFO("RMSx = %.2f, delta_x = %.2f, RMSy = %.2f, delta_y = %.2f",current_xRMS,delta_x,current_yRMS,delta_y);
+    }
+}
+#endif
 
