@@ -42,9 +42,10 @@ ros::Duration dt_ros;
     double dt = 0.01;
     //
 // Define controller setpoints, in case there is no subscriber to callback
-double x_des = 0.0;
-double y_des = 0.0;
-double z_des = 0.8;
+double x_des = 0;
+double y_des = 0;
+double z_des = 1;
+
     // Create the PID class instances for x, y, and z:
     PID pidx = PID(0.01,1,-1,Kp_x,Kd_x,Ki_x);
     PID pidy = PID(0.01,1,-1,Kp_y,Kd_y,Ki_y);
@@ -91,10 +92,11 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 // Main function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
 // outputs the message onto a "/cmd_vel" topic.
+
 #ifdef USEOPTI
 void MsgCallback(const geometry_msgs::PoseStamped msg)
 {
-    geometry_msgs::PoseStamped pose_fixt;
+    geometry_msgs::TransformStamped pose_fixt;
     geometry_msgs::Quaternion GMquat;
     
 
@@ -111,7 +113,7 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 
     // Here the Opti_Rect function is defined in OptiTools.h, and simply adjusts the coordinate system to be the one that we are used to working with.
     pose_fixt = Opti_Rect(msg);
-    GMquat = pose_fixt.pose.orientation;
+    GMquat = pose_fixt.transform.rotation;
 
     // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion
     tf::Quaternion quat;
@@ -123,6 +125,7 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
+
     delta_x = cos(yaw)*(pose_fixt.pose.position.x-x_des) + sin(yaw)*(pose_fixt.pose.position.y-y_des);
     delta_y = -sin(yaw)*(pose_fixt.pose.position.x-x_des) + cos(yaw)*(pose_fixt.pose.position.y-y_des);
     delta_z = pose_fixt.pose.position.z-z_des;
@@ -184,6 +187,7 @@ void MsgCallback(const geometry_msgs::TransformStamped msg)
 
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
+
     delta_x = cos(yaw)*(pose_fixt.transform.translation.x-x_des) + sin(yaw)*(pose_fixt.transform.translation.y-y_des);
     delta_y = -sin(yaw)*(pose_fixt.transform.translation.x-x_des) + cos(yaw)*(pose_fixt.transform.translation.y-y_des);
     delta_z = pose_fixt.transform.translation.z-z_des;
@@ -220,6 +224,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     // Advertise the cmd vel node
+
     #ifdef USEOPTI
     quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 5);
     #endif
@@ -230,6 +235,7 @@ int main(int argc, char **argv)
 
 
     // These four lines set up the dynamic reconfigure server
+
 /*    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
     f = boost::bind(&callback, _1, _2);
@@ -245,9 +251,7 @@ int main(int argc, char **argv)
     pose_subscriber = n.subscribe("/vicon/ARDroneThomas/ARDroneThomas", 5, MsgCallback);
     #endif
 
-
     ros::spin();
-
 
     return 0;
 }

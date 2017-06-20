@@ -43,7 +43,6 @@ void MsgCallback(const geometry_msgs::PoseStamped msg);
 void MsgCallback(const geometry_msgs::TransformStamped msg);
 #endif
 
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ArdroneRMS");
@@ -53,6 +52,7 @@ int main(int argc, char **argv)
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
     f = boost::bind(&callback, _1, _2);
     server.setCallback(f);
+
 
     // Subscribe to the Ardrone data incoming from the OptiTrack/vicon
     #ifdef USEOPTI
@@ -109,15 +109,16 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 // Workhorse function. rectifies coordinate system, converts quaternion to rpy, 
 // converts from world to body frame, applies PIDs to the channels, then
 // outputs the message onto a "/cmd_vel" topic.
+
 #ifdef USEOPTI
 void MsgCallback(const geometry_msgs::PoseStamped msg)
 {
-    geometry_msgs::PoseStamped pose_fixt;
+    geometry_msgs::TransformStamped pose_fixt;
     geometry_msgs::Quaternion GMquat;
 
     // Here the Opti_Rect function is defined in OptiTools.h, and simply adjusts the coordinate system to be the one that we are used to working with.
     pose_fixt = Opti_Rect(msg);
-    GMquat = pose_fixt.pose.orientation;
+    GMquat = pose_fixt.transform.rotation;
 
     // the incoming geometry_msgs::Quaternion is transformed to a tf::Quaterion
     tf::Quaternion quat;
@@ -131,9 +132,9 @@ void MsgCallback(const geometry_msgs::PoseStamped msg)
 
     // Calculate delta_x and delta_y in the body-fixed frame.
     double delta_x,delta_y,delta_z;
-    delta_x = cos(yaw)*(pose_fixt.pose.position.x-x_des) + sin(yaw)*(pose_fixt.pose.position.y-y_des);
-    delta_y = -sin(yaw)*(pose_fixt.pose.position.x-x_des) + cos(yaw)*(pose_fixt.pose.position.y-y_des);
-    delta_z = pose_fixt.pose.position.z-z_des;
+    delta_x = cos(yaw)*(pose_fixt.transform.translation.x-x_des) + sin(yaw)*(pose_fixt.transform.translation.y-y_des);
+    delta_y = -sin(yaw)*(pose_fixt.transform.translation.x-x_des) + cos(yaw)*(pose_fixt.transform.translation.y-y_des);
+    delta_z = pose_fixt.transform.translation.z-z_des;
 
     leftRotatebyOne(x_RMS,array_length,delta_x);
     leftRotatebyOne(y_RMS,array_length,delta_y);

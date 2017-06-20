@@ -3,7 +3,7 @@
 
 <launch>
 <!-- Launch the OptiTrack node - the OptiTrack must already be running -->
-  <include file="$(find vrpn_client_ros)/launch/sample.launch"/>
+  <include file="$(find vicon_bridge)/launch/vicon.launch"/>
 
 <!-- Launch the ardronev1 node - our OptiTrack control -->
   <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" output = "screen"/>
@@ -22,7 +22,9 @@
         <rosparam file="$(find ardronecontrol)/config/twist_mux_topics.yaml" command="load"/>
         <rosparam file="$(find ardronecontrol)/config/twist_mux_locks.yaml" command="load"/>
     </node>
+
 <!--
   <node name="RMS_avg" pkg= "ardronecontrol" type="RMS_avg" output="screen"/>
 -->
+
 </launch>
