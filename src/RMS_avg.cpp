@@ -18,15 +18,29 @@
 #include <stdio.h>
 #include <math.h>
 
-#define array_length 1500
+#define array_length 18000
+
+
+//#define USEOPTI
+#define USEVICON
+
+
 
 // Here I use global subscriber, since I want to access the
 // publisher in the function MsgCallback:
 ros::Subscriber pose_subscriber;
 
+#ifdef USEOPTI
 double x_des = 1.0;
 double y_des = 1.0;
 double z_des = 0.4;
+#endif
+#ifdef USEVICON
+double x_des = 0.0;
+double y_des = 0.0;
+double z_des = 0.8;
+#endif
+
 double x_RMS[array_length];
 double y_RMS[array_length];
 int k = 0;
@@ -48,12 +62,12 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ArdroneRMS");
     ros::NodeHandle n;
-
+/*
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
     f = boost::bind(&callback, _1, _2);
     server.setCallback(f);
-
+*/
     // Subscribe to the Ardrone data incoming from the OptiTrack/vicon
     #ifdef USEOPTI
     pose_subscriber = n.subscribe("/vrpn_client_node/Ardrone/pose", 5, MsgCallback);

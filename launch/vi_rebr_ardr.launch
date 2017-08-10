@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch> 
+
+  <!-- 
+    This launch file starts vicon_bridge with the zero poses for ARDroneChris and ARDroneAdrian, ARDroneAngela, ARDroneKarime, and the Fan
+  -->
+
+  <!-- Uncomment the line below to include an attitude correction file, from the dsl__calibration package -->
+  <!-- <rosparam file="$(find dsl__projects__calibration)/YAML/ARDroneChris_zero_pose_correction.yaml" command="load" /> -->
+
+<node pkg="vicon_bridge" type="vicon_bridge" name="vicon" output="log">
+    <param name="stream_mode" value="ClientPull" type="str" />
+<param name="datastream_hostport" value="192.168.2.102:801" type="str" />
+ 
+        <!-- zero pose for ARDroneThomas -->
+        <param name="ARDroneThomas/ARDroneThomas/zero_pose/orientation/x" value="0.00202348445352" type="double" />
+        <param name="ARDroneThomas/ARDroneThomas/zero_pose/orientation/y" value="-0.661538476974" type="double" />   
+        <param name="ARDroneThomas/ARDroneThomas/zero_pose/orientation/z" value="0.00043316548381" type="double" /> 
+        <param name="ARDroneThomas/ARDroneThomas/zero_pose/orientation/w" value="0.749908368644" type="double" />   
+        <param name="ARDroneThomas/ARDroneThomas/zero_pose/position/x"    value="0.00192833400277" type="double" />            
+        <param name="ARDroneThomas/ARDroneThomas/zero_pose/position/y"    value="0.000901188402152" type="double" />            
+        <param name="ARDroneThomas/ARDroneThomas/zero_pose/position/z"    value="0.122329648687" type="double" />  
+</node>
+
+<!-- Launch the ardronev1 node - our OptiTrack control -->
+  <node name="ardronev1" pkg="ardronecontrol" type="ardronev1" output = "screen"/>
+
+  <node name="keyboard_controller" pkg="ardrone_tutorials" type="keyboard_controller.py" required="true">
+		<remap from="cmd_vel" to="key_output"/>
+  </node>
+  <include file="$(find ardrone_autonomy)/launch/ardrone.launch"/>
+
+    <node name="filter_empty_msgs" pkg="ardronecontrol" type="filter_empty_msgs"/>
+
+<!-- This launches the twist_mux node, giving our keyboard controller priority over OptiTrack control -->
+    <node name="vel_mux" pkg="twist_mux" type="twist_mux">
+        <remap from="twist" to="twist_mux/cmd_vel"/>
+	<remap from="cmd_vel_out" to="cmd_vel"/>
+        <rosparam file="$(find ardronecontrol)/config/twist_mux_topics.yaml" command="load"/>
+        <rosparam file="$(find ardronecontrol)/config/twist_mux_locks.yaml" command="load"/>
+    </node>
+<!--
+  <node name="RMS_avg" pkg= "ardronecontrol" type="RMS_avg" output="screen"/>
+-->
+</launch>

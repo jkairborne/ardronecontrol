@@ -17,8 +17,8 @@
 #include <stdio.h>
 #include <math.h>
 
-#define USEOPTI
-//#define USEVICON
+//#define USEOPTI
+#define USEVICON
 
 
 // Here I use global publisher and subscriber, since I want to access the
