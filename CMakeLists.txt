@@ -39,7 +39,7 @@ add_executable(RMS_avg src/RMS_avg.cpp)
 target_link_libraries(RMS_avg ${catkin_LIBRARIES})
 
 add_executable(yawcombine src/yawcombine.cpp)
-target_link_libraries(yawcombine ${catkin_LIBRARIES})
+target_link_libraries(yawcombine ${catkin_LIBRARIES} pid)
 
 add_executable(yaw_vis src/yaw_vis.cpp)
 target_link_libraries(yaw_vis ${catkin_LIBRARIES})
