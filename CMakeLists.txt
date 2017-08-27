@@ -26,6 +26,9 @@ include_directories(
 add_executable(ardronev1 src/ardronev1.cpp)
 target_link_libraries(ardronev1 ${catkin_LIBRARIES} pid)
 
+add_executable(PBVS_ardrone src/PBVS_ardrone.cpp)
+target_link_libraries(PBVS_ardrone ${catkin_LIBRARIES} pid)
+
 add_executable(PoseStampedPub src/PoseStampedPub.cpp)
 target_link_libraries(PoseStampedPub ${catkin_LIBRARIES})
 
