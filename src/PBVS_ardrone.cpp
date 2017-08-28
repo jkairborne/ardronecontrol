@@ -71,14 +71,14 @@ double z_des = 0.8;
     PID pidpsi = PID(dt,1,-1,Kp_psi,Kd_psi,Ki_psi);
 
 #ifdef USEROOMBA_VEL
-    double Kp_x_vel = 0.0;
+    double Kp_x_vel = 0.2;
     double Kd_x_vel = 0.0;
     double Ki_x_vel = 0.0;
     PID pidx_vel = PID(dt,1,-1,Kp_x_vel,Kd_x_vel,Ki_x_vel);
     double x_vel_component;
 #endif
 #ifdef USEROOMBA_ACC
-    double Kp_x_acc = 0.0;
+    double Kp_x_acc = 0.2;
     double Kd_x_acc = 0.0;
     double Ki_x_acc = 0.0;
     PID pidx_acc = PID(dt,1,-1,Kp_x_acc,Kd_x_acc,Ki_x_acc);
@@ -205,14 +205,18 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
     oldtime = newtime;
 
+    std::cout << "Line 208 - value of pid output x: " << pid_output.linear.x << '\n';
+
 #ifdef USEROOMBA_ACC
     pid_output.linear.x += x_acc_component;
+    std::cout << "Line 212 - roomba accel - value of pid output x: " << pid_output.linear.x << '\n';
 #endif
 #ifdef USEROOMBA_VEL
     pid_output.linear.x += x_vel_component;
+            std::cout << "Line 215 - roomba vel - value of pid output x: " << pid_output.linear.x << '\n';
 #endif
     pid_output.linear.x = saturate_bounds(1,-1,pid_output.linear.x);
-
+        std::cout << "Line 219 - after sat bounds - value of pid output x: " << pid_output.linear.x << '\n';
     // publish PID output:
     quad_twist.publish(pid_output);
 }
@@ -222,6 +226,7 @@ double callbackacc(double newvel_r, double newdt)
     double acc = (newvel_r-oldvel_r)/newdt;
 
     double ret_val = pidx_acc.calculate(0,acc,newdt);
+    std::cout << "line 231: newvel: " << newvel_r << " oldvel: " << oldvel_r << " dt: " << newdt << '\n';
 
     oldvel_r = newvel_r;
 
@@ -236,10 +241,12 @@ void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
     dt_ros_r = newtime_r - oldtime_r;
     double timediff_r = dt_ros_r.toSec();
 #ifdef USEROOMBA_ACC
-    x_acc_component = callbackacc(velcmd.twist.linear.x,timediff_r);
+    x_acc_component =callbackacc(velcmd.twist.linear.x,timediff_r);
+    std::cout << "line 240: x_acc_component = " << x_acc_component << " , dt_ros_r =" << timediff_r << '\n';
 #endif
 #ifdef USEROOMBA_VEL
     x_vel_component = pidx_vel.calculate(0,velcmd.twist.linear.x,timediff_r);
+        std::cout << "line 244: x_vel_component = " << x_vel_component << " , vel_cmd =" << velcmd.twist.linear.x<< '\n';
 #endif
     oldtime_r = newtime_r;
 
@@ -247,6 +254,7 @@ void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
 
 double saturate_bounds(double max, double min, double val)
 {
+    std::cout << "in saturate bounds - max: " << max << " min: " << min << " val: " << val << '\n';
     if(max < min)
     {
         std::cout << "Your Min is greater than your max in saturate_bounds fct!";
@@ -281,7 +289,7 @@ cmdNotPBVS.data = 0;
 
     oldtime = ros::Time::now();
     // Subscribe to the Ardrone data incoming from the OptiTrack
-    ardrone_subscriber = n.subscribe("/vrpn_client_node/ardrone/pose", 1, MsgCallback);
+    ardrone_subscriber = n.subscribe("/ardrone/navdata", 1, MsgCallback);
 #if defined(USEROOMBA_VEL) || defined(USEROOMBA_ACC)
     roomba_subscriber = n.subscribe("/roomba_vel_cmd",1,roombaCallback);
 #endif
