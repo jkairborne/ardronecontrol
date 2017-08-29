@@ -22,8 +22,8 @@
 //#define USEOPTI
 //#define USEVICON
 
-#define USEROOMBA_VEL
-#define USEROOMBA_ACC
+//#define USEROOMBA_VEL
+//#define USEROOMBA_ACC
 
 double saturate_bounds(double max, double min, double val);
 
@@ -46,11 +46,11 @@ ros::Time newtime_r, oldtime_r;
 ros::Duration dt_ros_r;
 
     // Define controller gains
-    double Kp_x = 0.1;
-    double Kd_x = 0.0;
+    double Kp_x = 0.002;
+    double Kd_x = 0.00;
     double Ki_x = 0.0;
     double Kp_y = 0.1;
-    double Kd_y = 0.2;
+    double Kd_y = 0.0;
     double Ki_y = 0.0;
     double Kp_z = 0.7;
     double Kd_z = 0;
@@ -221,35 +221,26 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     quad_twist.publish(pid_output);
 }
 
-double callbackacc(double newvel_r, double newdt)
-{
-    double acc = (newvel_r-oldvel_r)/newdt;
-
-    double ret_val = pidx_acc.calculate(0,acc,newdt);
-    std::cout << "line 231: newvel: " << newvel_r << " oldvel: " << oldvel_r << " dt: " << newdt << '\n';
-
-    oldvel_r = newvel_r;
-
-    return ret_val;
-} //end callbackacc
-
-
 void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
 {
     ros::Time newtime_r = velcmd.header.stamp;
 
     dt_ros_r = newtime_r - oldtime_r;
     double timediff_r = dt_ros_r.toSec();
+    double newvel_r = velcmd.twist.linear.x;
 #ifdef USEROOMBA_ACC
-    x_acc_component =callbackacc(velcmd.twist.linear.x,timediff_r);
-    std::cout << "line 240: x_acc_component = " << x_acc_component << " , dt_ros_r =" << timediff_r << '\n';
+    double acc = (newvel_r-oldvel_r)/timediff_r;
+
+    x_acc_component = pidx_acc.calculate(0,acc,newdt);
+    std::cout << "line 243: newvel: " << newvel_r << " oldvel: " << oldvel_r << " dt: " << timediff_r << '\n';
+
+    oldvel_r = newvel_r;
 #endif
 #ifdef USEROOMBA_VEL
     x_vel_component = pidx_vel.calculate(0,velcmd.twist.linear.x,timediff_r);
-        std::cout << "line 244: x_vel_component = " << x_vel_component << " , vel_cmd =" << velcmd.twist.linear.x<< '\n';
+        std::cout << "line 249: x_vel_component = " << x_vel_component << " , vel_cmd =" << velcmd.twist.linear.x<< '\n';
 #endif
     oldtime_r = newtime_r;
-
 }
 
 double saturate_bounds(double max, double min, double val)
