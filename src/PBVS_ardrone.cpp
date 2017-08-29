@@ -22,11 +22,11 @@
 //#define USEOPTI
 //#define USEVICON
 
-#define USEROOMBA_VEL
-#define USEROOMBA_ACC
+//#define USEROOMBA_VEL
+//#define USEROOMBA_ACC
 
 double saturate_bounds(double max, double min, double val);
-
+void printnavdata(ardrone_autonomy::Navdata msg);
 // Here I use global publisher and subscriber, since I want to access the
 // publisher in the function MsgCallback:
 ros::Publisher quad_twist;
@@ -46,13 +46,13 @@ ros::Time newtime_r, oldtime_r;
 ros::Duration dt_ros_r;
 
     // Define controller gains
-    double Kp_x = 0.1;
-    double Kd_x = 0.0;
+    double Kp_x = 0.002;
+    double Kd_x = 0.003;
     double Ki_x = 0.0;
-    double Kp_y = 0.1;
-    double Kd_y = 0.2;
+    double Kp_y = 0.002;
+    double Kd_y = 0.003;
     double Ki_y = 0.0;
-    double Kp_z = 0.7;
+    double Kp_z = 0.2;
     double Kd_z = 0;
     double Ki_z = 0;
     double dt = 0.03333; //tag detection takes place onboard at 30Hz
@@ -144,6 +144,7 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 
 void MsgCallback(const ardrone_autonomy::Navdata msg)
 {
+    printnavdata(msg);
     newtime = msg.header.stamp;
     dt_ros = newtime-oldtime;
     dt = dt_ros.toSec();
@@ -196,43 +197,31 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     geometry_msgs::Twist pid_output;
 
     // Populate the output message
-    pid_output.linear.x = pidx.calculate(0,delta_x,dt);
-    pid_output.linear.y = pidy.calculate(0,delta_y,dt);
+    //Note that we swap deltax and deltay because of coordinate system differences
+    pid_output.linear.x = pidx.calculate(0,delta_y,dt);
+    pid_output.linear.y = pidy.calculate(0,delta_x,dt);
     pid_output.linear.z = pidz.calculate(1.5,zpos0,dt);
+    std::cout << "Y delta, x output: " << delta_y << "   " << pid_output.linear.x << '\n';
+    std::cout << "X delta, y output: " << delta_x << "   " << pid_output.linear.y << '\n';
+    std::cout << "Z delta, z output: " << (zpos0-1.5) << "   " << pid_output.linear.z << '\n';
+
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
     pid_output.angular.z = pidpsi.calculate(0,delta_psi,dt);
+    std::cout << "psi delta, psi output: " << delta_psi << "   " << pid_output.angular.z << '\n';
 
     oldtime = newtime;
 
-    std::cout << "Line 208 - value of pid output x: " << pid_output.linear.x << '\n';
-
 #ifdef USEROOMBA_ACC
     pid_output.linear.x += x_acc_component;
-    std::cout << "Line 212 - roomba accel - value of pid output x: " << pid_output.linear.x << '\n';
 #endif
 #ifdef USEROOMBA_VEL
     pid_output.linear.x += x_vel_component;
-            std::cout << "Line 215 - roomba vel - value of pid output x: " << pid_output.linear.x << '\n';
 #endif
     pid_output.linear.x = saturate_bounds(1,-1,pid_output.linear.x);
-        std::cout << "Line 219 - after sat bounds - value of pid output x: " << pid_output.linear.x << '\n';
     // publish PID output:
     quad_twist.publish(pid_output);
 }
-
-double callbackacc(double newvel_r, double newdt)
-{
-    double acc = (newvel_r-oldvel_r)/newdt;
-
-    double ret_val = pidx_acc.calculate(0,acc,newdt);
-    std::cout << "line 231: newvel: " << newvel_r << " oldvel: " << oldvel_r << " dt: " << newdt << '\n';
-
-    oldvel_r = newvel_r;
-
-    return ret_val;
-} //end callbackacc
-
 
 void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
 {
@@ -241,12 +230,15 @@ void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
     dt_ros_r = newtime_r - oldtime_r;
     double timediff_r = dt_ros_r.toSec();
 #ifdef USEROOMBA_ACC
-    x_acc_component =callbackacc(velcmd.twist.linear.x,timediff_r);
-    std::cout << "line 240: x_acc_component = " << x_acc_component << " , dt_ros_r =" << timediff_r << '\n';
+    double acc = (newvel_r-oldvel_r)/timediff_r;
+    x_acc_component =pidx_acc.calculate(0,acc,timediff_r);
+    oldvel_r = newvel_r;
+
+//    std::cout << "line 240: x_acc_component = " << x_acc_component << " , dt_ros_r =" << timediff_r << '\n';
 #endif
 #ifdef USEROOMBA_VEL
     x_vel_component = pidx_vel.calculate(0,velcmd.twist.linear.x,timediff_r);
-        std::cout << "line 244: x_vel_component = " << x_vel_component << " , vel_cmd =" << velcmd.twist.linear.x<< '\n';
+//        std::cout << "line 244: x_vel_component = " << x_vel_component << " , vel_cmd =" << velcmd.twist.linear.x<< '\n';
 #endif
     oldtime_r = newtime_r;
 
@@ -254,7 +246,7 @@ void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
 
 double saturate_bounds(double max, double min, double val)
 {
-    std::cout << "in saturate bounds - max: " << max << " min: " << min << " val: " << val << '\n';
+//    std::cout << "in saturate bounds - max: " << max << " min: " << min << " val: " << val << '\n';
     if(max < min)
     {
         std::cout << "Your Min is greater than your max in saturate_bounds fct!";
@@ -298,3 +290,13 @@ cmdNotPBVS.data = 0;
 
     return 0;
 }
+
+void printnavdata(ardrone_autonomy::Navdata msg)
+{
+    if(msg.tags_count>0)
+    {
+        std::cout << "x/y/z/psi: " << msg.tags_xc[0] << "/" << msg.tags_yc[0] << "/" << msg.tags_distance[0] << "/" << msg.tags_orientation[0] << "\n";
+    }
+}
+
+
