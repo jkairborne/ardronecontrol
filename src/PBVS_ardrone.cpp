@@ -25,6 +25,11 @@
 //#define USEROOMBA_VEL
 //#define USEROOMBA_ACC
 
+#define ZDES 200 //desired height in cm
+
+#define KPLAT 0.02
+#define KDLAT 0.03
+
 double saturate_bounds(double max, double min, double val);
 void printnavdata(ardrone_autonomy::Navdata msg);
 // Here I use global publisher and subscriber, since I want to access the
@@ -46,17 +51,17 @@ ros::Time newtime_r, oldtime_r;
 ros::Duration dt_ros_r;
 
     // Define controller gains
-    double Kp_x = 0.002;
-    double Kd_x = 0.003;
+    double Kp_x = KPLAT;
+    double Kd_x = KDLAT;
     double Ki_x = 0.0;
-    double Kp_y = 0.002;
-    double Kd_y = 0.003;
+    double Kp_y = KPLAT;
+    double Kd_y = KDLAT;
     double Ki_y = 0.0;
-    double Kp_z = 0.2;
+    double Kp_z = 0.01;
     double Kd_z = 0;
     double Ki_z = 0;
     double dt = 0.03333; //tag detection takes place onboard at 30Hz
-    double Kp_psi = 0.7;
+    double Kp_psi = 0.01;
     double Kd_psi = 0.0;
     double Ki_psi = 0.0;
     //
@@ -71,14 +76,14 @@ double z_des = 0.8;
     PID pidpsi = PID(dt,1,-1,Kp_psi,Kd_psi,Ki_psi);
 
 #ifdef USEROOMBA_VEL
-    double Kp_x_vel = 0.2;
+    double Kp_x_vel = 0.1;
     double Kd_x_vel = 0.0;
     double Ki_x_vel = 0.0;
     PID pidx_vel = PID(dt,1,-1,Kp_x_vel,Kd_x_vel,Ki_x_vel);
     double x_vel_component;
 #endif
 #ifdef USEROOMBA_ACC
-    double Kp_x_acc = 0.2;
+    double Kp_x_acc = 0.1;
     double Kd_x_acc = 0.0;
     double Ki_x_acc = 0.0;
     PID pidx_acc = PID(dt,1,-1,Kp_x_acc,Kd_x_acc,Ki_x_acc);
@@ -97,6 +102,11 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   Kp_x = config.Kp_x;
   Kd_x = config.Kd_x;
   Ki_x = config.Ki_x;
+  // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
+  pidx.mod_params(Kp_x,Kd_x,Ki_x);
+  // Change the desired positions
+  x_des = config.set_x;
+
 #ifdef USEROOMBA_VEL
   Kp_x_vel = config.Kp_x_vel;
   Kd_x_vel = config.Kd_x_vel;
@@ -109,21 +119,18 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   Ki_x_acc = config.Ki_x_acc;
   pidx_acc.mod_params(Kp_x_acc,Kd_x_acc,Ki_x_acc);
 #endif
-  // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
-  pidx.mod_params(Kp_x, Kd_x,Ki_x);
-  // Change the desired positions
-  x_des = config.set_x;
+
 
 // Save the new configuration to doubles
   Kp_y = config.Kp_y;
   Kd_y = config.Kd_y;
   Ki_y = config.Ki_y;
   // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
-  pidx.mod_params(Kp_y, Kd_y,Ki_y);
+  pidy.mod_params(Kp_y, Kd_y,Ki_y);
   // Change the desired positions
   y_des = config.set_y;
 
-
+std::cout << "new gains: kp,d,i x: " << Kp_x << " " << Kd_x  << " " << Ki_x  << " " << "kp,d,i y: " << Kp_y << " " << Kd_y << " " << Ki_y << '\n';
   // Create and publish the new gains to a TwistStamped method:
   geometry_msgs::TwistStamped newgains;
   newgains.header.stamp = ros::Time::now();
@@ -200,15 +207,15 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     //Note that we swap deltax and deltay because of coordinate system differences
     pid_output.linear.x = pidx.calculate(0,delta_y,dt);
     pid_output.linear.y = pidy.calculate(0,delta_x,dt);
-    pid_output.linear.z = pidz.calculate(1.5,zpos0,dt);
+    pid_output.linear.z = pidz.calculate(ZDES,zpos0,dt);
     std::cout << "Y delta, x output: " << delta_y << "   " << pid_output.linear.x << '\n';
     std::cout << "X delta, y output: " << delta_x << "   " << pid_output.linear.y << '\n';
-    std::cout << "Z delta, z output: " << (zpos0-1.5) << "   " << pid_output.linear.z << '\n';
+    std::cout << "Z delta, z output: " << (zpos0-ZDES) << "   " << pid_output.linear.z << '\n';
 
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
-    pid_output.angular.z = pidpsi.calculate(0,delta_psi,dt);
-    std::cout << "psi delta, psi output: " << delta_psi << "   " << pid_output.angular.z << '\n';
+    pid_output.angular.z = pidpsi.calculate(0,(180-delta_psi),dt);
+    std::cout << "psi delta-180, psi output: " << (180-delta_psi) << "   " << pid_output.angular.z << '\n';
 
     oldtime = newtime;
 
@@ -273,11 +280,11 @@ cmdPBVS.data = 1;
 cmdNotPBVS.data = 0;
 
     // These four lines set up the dynamic reconfigure server
-/*    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
+    dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig> server;
     dynamic_reconfigure::Server<ardronecontrol::PIDsetConfig>::CallbackType f;
     f = boost::bind(&callback, _1, _2);
     server.setCallback(f);
-*/
+
 
     oldtime = ros::Time::now();
     // Subscribe to the Ardrone data incoming from the OptiTrack
