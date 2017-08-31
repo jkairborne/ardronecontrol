@@ -27,8 +27,8 @@
 
 #define ZDES 200 //desired height in cm
 
-#define KPLAT 0.02
-#define KDLAT 0.03
+#define KPLAT 0.0005
+#define KDLAT 0.00075
 
 double saturate_bounds(double max, double min, double val);
 void printnavdata(ardrone_autonomy::Navdata msg);
@@ -89,8 +89,6 @@ double z_des = 0.8;
     PID pidx_acc = PID(dt,1,-1,Kp_x_acc,Kd_x_acc,Ki_x_acc);
     double x_acc_component;
 #endif
-
-
 
 
     // This is the callback from the parameter server
@@ -156,9 +154,19 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     dt_ros = newtime-oldtime;
     dt = dt_ros.toSec();
 
+    // Create the output message to be published
+    geometry_msgs::Twist pid_output;
+
     if(msg.tags_count ==0)
     {
         srcCmd.publish(cmdNotPBVS);
+        pid_output.linear.x = 0;
+        pid_output.linear.y = 0;
+        pid_output.linear.z = 0;
+        pid_output.angular.x = 0.1;
+        pid_output.angular.y = 0.1;
+        pid_output.angular.z = 0;
+        quad_twist.publish(pid_output);
         targetVisible = 0;
         return;
     }
@@ -200,22 +208,22 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     yprime = msg.tags_distance[0]*sin(roty - atan((msg.tags_yc[0]-500.0)/917.19)); // the 878.41 is the focal length in the x direction in units of pixels
 */
 
-    // Create the output message to be published
-    geometry_msgs::Twist pid_output;
+
 
     // Populate the output message
     //Note that we swap deltax and deltay because of coordinate system differences
     pid_output.linear.x = pidx.calculate(0,delta_y,dt);
     pid_output.linear.y = pidy.calculate(0,delta_x,dt);
     pid_output.linear.z = pidz.calculate(ZDES,zpos0,dt);
+/*
     std::cout << "Y delta, x output: " << delta_y << "   " << pid_output.linear.x << '\n';
     std::cout << "X delta, y output: " << delta_x << "   " << pid_output.linear.y << '\n';
     std::cout << "Z delta, z output: " << (zpos0-ZDES) << "   " << pid_output.linear.z << '\n';
-
+*/
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
     pid_output.angular.z = pidpsi.calculate(0,(180-delta_psi),dt);
-    std::cout << "psi delta-180, psi output: " << (180-delta_psi) << "   " << pid_output.angular.z << '\n';
+  //  std::cout << "psi delta-180, psi output: " << (180-delta_psi) << "   " << pid_output.angular.z << '\n';
 
     oldtime = newtime;
 
@@ -271,8 +279,10 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
 
+
+
     // Advertise the cmd vel node
-    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_opti", 1);
+    quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_PBVS", 1);
     srcCmd = n.advertise<std_msgs::Float64>("src_cmd",1);
 
     new_gains = n.advertise<geometry_msgs::TwistStamped>("gain_changer", 1);
