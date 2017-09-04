@@ -244,6 +244,42 @@ void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
 
 }
 
+double virtcam(double origImgPts[],double roll, double pitch)
+{
+ /*   Eigen::Matrix3d output;
+    double camRoll, camPitch;
+    camRoll = -pitch;
+    camPitch = -roll;
+
+    
+    roll = msg.rotX*M_PI/180;
+    pitch = msg.rotY*M_PI/180;
+    yaw = msg.rotZ*M_PI/180;
+    // Number 2 from May 29th 2017 log
+    output(0,0) = cos(camPitch);
+    output(1,0) = 0;
+    output(0,1) = sin(camRoll)*sin(camPitch);
+    output(1,1) = cos(camRoll);
+    output(2,0) = -sin(camPitch);
+    output(2,1) = cos(camPitch)*sin(camRoll);
+    output(2,2) = cos(camPitch)*cos(camRoll);
+    output(0,2) = cos(camRoll)*sin(camPitch);
+    output(1,2) = -sin(camRoll);
+
+
+
+
+//23    std::cout << "callback roll, pitch, yaw: " << roll << '\t' << pitch << '\t' << yaw << '\n';
+    std::vector<double> abc(3);
+    abc.resize(3);
+//23    std::cout <<"\n Just before abc \n";
+    abc = get_rpy();
+    //getRotM();
+    
+    */
+    return 0.0;
+}
+
 double saturate_bounds(double max, double min, double val)
 {
 //    std::cout << "in saturate bounds - max: " << max << " min: " << min << " val: " << val << '\n';
@@ -256,6 +292,8 @@ double saturate_bounds(double max, double min, double val)
     else if (val<min) {return min;}
     else {return val;}
 }
+
+
 
 
 
