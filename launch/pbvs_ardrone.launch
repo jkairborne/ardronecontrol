@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+
+<launch>
+<!-- Launch the OptiTrack node - the OptiTrack must already be running -->
+
+<!-- Launch the ardronev1 node - our OptiTrack control -->
+  <node name="pbvs" pkg="ardronecontrol" type="PBVS_ardrone" output = "screen"/>
+
+  <node name="keyboard_controller" pkg="ardrone_tutorials" type="keyboard_controller.py" required="true">
+		<remap from="cmd_vel" to="key_output"/>
+  </node>
+  <include file="$(find opencv_ardrone)/launch/ardrone.launch"/>
+
+    <node name="filter_empty_msgs" pkg="ardronecontrol" type="filter_empty_msgs"/>
+    <node name="vel_mux" pkg="twist_mux" type="twist_mux">
+        <remap from="twist" to="twist_mux/cmd_vel"/>
+	<remap from="cmd_vel_out" to="cmd_vel"/>
+        <rosparam file="$(find opencv_ardrone)/config/twist_mux_topics.yaml" command="load"/>
+        <rosparam file="$(find opencv_ardrone)/config/twist_mux_locks.yaml" command="load"/>
+    </node>
+    
+</launch>
