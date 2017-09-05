@@ -25,7 +25,7 @@
 //#define USEROOMBA_VEL
 //#define USEROOMBA_ACC
 
-#define ZDES 200 //desired height in cm
+#define ZDES 300 //desired height in cm
 
 #define KPLAT 0.0005
 #define KDLAT 0.00075
@@ -164,7 +164,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
         pid_output.linear.y = 0;
         pid_output.linear.z = 0;
         pid_output.angular.x = 0.1;
-        pid_output.angular.y = 0.1;
+        pid_output.angular.y = 0.1;// Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
         pid_output.angular.z = 0;
         quad_twist.publish(pid_output);
         targetVisible = 0;
@@ -191,9 +191,14 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
     xpos0 = (msg.tags_xc[0]-500.0)/878.41;
     ypos0 = (msg.tags_yc[0]-500.0)/917.19;
-    delta_psi = msg.tags_orientation[0];
     zpos0 = msg.tags_distance[0];
- //   delta_z = zpos0 - 1.5; //height of 1.5m...
+    //psi needs somewhat special treatment, because for ArDrone it gets reported in degrees, from 0 to 360
+    //delta_psi = (180-msg.tags_orientation[0]); // original, "proper" orientation
+    delta_psi = msg.tags_orientation[0]-90;
+    if ((delta_psi)>180)
+    {
+        delta_psi = 180-delta_psi;
+    }
 
     delta_x = xpos0 * zpos0;
     delta_y = ypos0 * zpos0;
@@ -222,8 +227,9 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 */
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
-    pid_output.angular.z = pidpsi.calculate(0,(180-delta_psi),dt);
-  //  std::cout << "psi delta-180, psi output: " << (180-delta_psi) << "   " << pid_output.angular.z << '\n';
+    pid_output.angular.z = -pidpsi.calculate(0,delta_psi,dt);
+
+    std::cout << "psi delta-180, psi output: " << delta_psi << "   " << pid_output.angular.z << '\n';
 
     oldtime = newtime;
 
