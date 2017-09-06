@@ -25,13 +25,15 @@
 //#define USEROOMBA_VEL
 //#define USEROOMBA_ACC
 
-#define ZDES 300 //desired height in cm
+#define ZDES 200 //desired height in cm
 
 #define KPLAT 0.0005
 #define KDLAT 0.00075
 
 double saturate_bounds(double max, double min, double val);
 void printnavdata(ardrone_autonomy::Navdata msg);
+void virtcam(double origImgPts[], double camRoll, double camPitch, double z_est);
+
 // Here I use global publisher and subscriber, since I want to access the
 // publisher in the function MsgCallback:
 ros::Publisher quad_twist;
@@ -68,7 +70,7 @@ ros::Duration dt_ros_r;
 // Define controller setpoints, in case there is no subscriber to callback
 double x_des = 0.0;
 double y_des = 0.0;
-double z_des = 0.8;
+double z_des = 0.6;
     // Create the PID class instances for x, y, and z:
     PID pidx = PID(dt,1,-1,Kp_x,Kd_x,Ki_x);
     PID pidy = PID(dt,1,-1,Kp_y,Kd_y,Ki_y);
@@ -98,10 +100,12 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 
 // Save the new configuration to doubles
   Kp_x = config.Kp_x;
+
   Kd_x = config.Kd_x;
   Ki_x = config.Ki_x;
   // Call the mod_params function of the Pimpl class - this then calls the set_gains function in the PID class which actually changes the gains used for calculations
   pidx.mod_params(Kp_x,Kd_x,Ki_x);
+  pidy.mod_params(Kp_x,Kd_x,Ki_x);
   // Change the desired positions
   x_des = config.set_x;
 
@@ -118,7 +122,7 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   pidx_acc.mod_params(Kp_x_acc,Kd_x_acc,Ki_x_acc);
 #endif
 
-
+/*
 // Save the new configuration to doubles
   Kp_y = config.Kp_y;
   Kd_y = config.Kd_y;
@@ -127,10 +131,6 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   pidy.mod_params(Kp_y, Kd_y,Ki_y);
   // Change the desired positions
   y_des = config.set_y;
-
-std::cout << "new gains: kp,d,i x: " << Kp_x << " " << Kd_x  << " " << Ki_x  << " " << "kp,d,i y: " << Kp_y << " " << Kd_y << " " << Ki_y << '\n';
-  // Create and publish the new gains to a TwistStamped method:
-  geometry_msgs::TwistStamped newgains;
   newgains.header.stamp = ros::Time::now();
   newgains.twist.linear.x = Kp_x;
   newgains.twist.linear.y = Kd_x;
@@ -138,7 +138,18 @@ std::cout << "new gains: kp,d,i x: " << Kp_x << " " << Kd_x  << " " << Ki_x  << 
   newgains.twist.angular.x = Kp_y;
   newgains.twist.angular.y = Kd_y;
   newgains.twist.angular.z = Ki_y;
+*/
+//std::cout << "new gains: kp,d,i x: " << Kp_x << " " << Kd_x  << " " << Ki_x  << " " << "kp,d,i y: " << Kp_y << " " << Kd_y << " " << Ki_y << '\n';
+  // Create and publish the new gains to a TwistStamped method:
+  geometry_msgs::TwistStamped newgains;
 
+  newgains.header.stamp = ros::Time::now();
+  newgains.twist.linear.x = Kp_x;
+  newgains.twist.linear.y = Kd_x;
+  newgains.twist.linear.z = Ki_x;
+  newgains.twist.angular.x = Kp_x;
+  newgains.twist.angular.y = Kd_x;
+  newgains.twist.angular.z = Ki_x;
   new_gains.publish(newgains);
 }
 
@@ -149,10 +160,11 @@ std::cout << "new gains: kp,d,i x: " << Kp_x << " " << Kd_x  << " " << Ki_x  << 
 
 void MsgCallback(const ardrone_autonomy::Navdata msg)
 {
-    printnavdata(msg);
+  //  printnavdata(msg);
     newtime = msg.header.stamp;
     dt_ros = newtime-oldtime;
     dt = dt_ros.toSec();
+    //std::cout << "received Navdata message\n";
 
     // Create the output message to be published
     geometry_msgs::Twist pid_output;
@@ -180,7 +192,6 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
         srcCmd.publish(cmdPBVS);
         dt = 0; //This will use the default time step specified when the PID was created - and prevents too large of one being used.
         targetVisible = 1;
-
     }
 
     // Assign new time into newtime global variable
@@ -189,7 +200,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
     double xpos0, ypos0,zpos0, delta_x,delta_y,delta_z,delta_psi;
 
-    xpos0 = (msg.tags_xc[0]-500.0)/878.41;
+    xpos0 = (msg.tags_xc[0]-500.0)/878.41; // TODO - why these two values?
     ypos0 = (msg.tags_yc[0]-500.0)/917.19;
     zpos0 = msg.tags_distance[0];
     //psi needs somewhat special treatment, because for ArDrone it gets reported in degrees, from 0 to 360
@@ -199,7 +210,19 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     {
         delta_psi = 180-delta_psi;
     }
+    double orig[2], virt[2];
+    orig[0] = xpos0;
+    orig[1] = ypos0;
 
+    //std::cout << "original: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
+    virtcam(orig,(-msg.rotY*M_PI/180), (-msg.rotX*M_PI/180), msg.tags_distance[0]);
+ std::cout << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
+//    std::cout << "modified: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
+
+    xpos0 = orig[0];
+    ypos0 = orig[1];
+
+    //std::cout << "x,y:   " << xpos0 << " " << ypos0 << '\n';
     delta_x = xpos0 * zpos0;
     delta_y = ypos0 * zpos0;
 /*
@@ -220,16 +243,16 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     pid_output.linear.x = pidx.calculate(0,delta_y,dt);
     pid_output.linear.y = pidy.calculate(0,delta_x,dt);
     pid_output.linear.z = pidz.calculate(ZDES,zpos0,dt);
-/*
-    std::cout << "Y delta, x output: " << delta_y << "   " << pid_output.linear.x << '\n';
-    std::cout << "X delta, y output: " << delta_x << "   " << pid_output.linear.y << '\n';
-    std::cout << "Z delta, z output: " << (zpos0-ZDES) << "   " << pid_output.linear.z << '\n';
-*/
+
+    //std::cout << "Y delta, x output: " << delta_y << "   " << pid_output.linear.x << '\n';
+    //std::cout << "X delta, y output: " << delta_x << "   " << pid_output.linear.y << '\n';
+   // std::cout << "Z delta, z output: " << (zpos0-ZDES) << "   " << pid_output.linear.z << '\n';
+
     // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
     pid_output.angular.y = 0.1;
     pid_output.angular.z = -pidpsi.calculate(0,delta_psi,dt);
 
-    std::cout << "psi delta-180, psi output: " << delta_psi << "   " << pid_output.angular.z << '\n';
+    //std::cout << "psi delta-180, psi output: " << delta_psi << "   " << pid_output.angular.z << '\n';
 
     oldtime = newtime;
 
@@ -265,40 +288,22 @@ void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
     oldtime_r = newtime_r;
 }
 
-double virtcam(double origImgPts[],double roll, double pitch)
+void virtcam(double origImgPts[],double camRoll, double camPitch, double z_est)
 {
- /*   Eigen::Matrix3d output;
-    double camRoll, camPitch;
-    camRoll = -pitch;
-    camPitch = -roll;
+    double u0 = origImgPts[0];
+    double v0 = origImgPts[1];
 
-    
-    roll = msg.rotX*M_PI/180;
-    pitch = msg.rotY*M_PI/180;
-    yaw = msg.rotZ*M_PI/180;
-    // Number 2 from May 29th 2017 log
-    output(0,0) = cos(camPitch);
-    output(1,0) = 0;
-    output(0,1) = sin(camRoll)*sin(camPitch);
-    output(1,1) = cos(camRoll);
-    output(2,0) = -sin(camPitch);
-    output(2,1) = cos(camPitch)*sin(camRoll);
-    output(2,2) = cos(camPitch)*cos(camRoll);
-    output(0,2) = cos(camRoll)*sin(camPitch);
-    output(1,2) = -sin(camRoll);
+    double x = u0*z_est;
+    double y = v0*z_est;
 
+    double x_v = cos(camPitch)*x + sin(camRoll)*sin(camPitch)*y + cos(camRoll)*sin(camPitch)*z_est;
+    double y_v = cos(camRoll)*y-sin(camRoll)*z_est;
+    double z_v = -sin(camPitch)*x+cos(camPitch)*sin(camRoll)*y+cos(camPitch)*cos(camRoll)*z_est;
 
+    origImgPts[0] = x_v/z_v;
+    origImgPts[1] = y_v/z_v;
+    //std::cout << "u0,v0: " << u0 << " " << v0 << " x,y " << x << " " << y << " x_v, y_v: " << x_v << " " << y_v << " output: " << origImgPts[0] << " " << origImgPts[1] << '\n';
 
-
-//23    std::cout << "callback roll, pitch, yaw: " << roll << '\t' << pitch << '\t' << yaw << '\n';
-    std::vector<double> abc(3);
-    abc.resize(3);
-//23    std::cout <<"\n Just before abc \n";
-    abc = get_rpy();
-    //getRotM();
-    
-    */
-    return 0.0;
 }
 
 double saturate_bounds(double max, double min, double val)
@@ -323,7 +328,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ArdronePID");
     ros::NodeHandle n;
 
-
+std::cout << "In beginning";
 
     // Advertise the cmd vel node
     quad_twist = n.advertise<geometry_msgs::Twist>("cmd_vel_PBVS", 1);

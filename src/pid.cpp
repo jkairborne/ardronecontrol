@@ -90,7 +90,7 @@ double PIDImpl::calculate(double setpoint, double pv, double dt)
     if(dt == 0){dt = _dt;}
     else if(dt < 0) {cout << "dt supplied to PID is less than 0\n";}
 
-    cout << "Kp, Kd, Ki: " << _Kp << " " << _Kd << " " << _Ki;
+    //cout << "Kp, Kd, Ki: " << _Kp << " " << _Kd << " " << _Ki << "\n";
     // Calculate error
     double error = setpoint - pv;
 
