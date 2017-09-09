@@ -24,11 +24,13 @@
 
 //#define USEROOMBA_VEL
 //#define USEROOMBA_ACC
+//#define AUTODESCENT
+#define TARGETLOST
 
 #define ZDES 200 //desired height in cm
 
-#define KPLAT 0.0005
-#define KDLAT 0.00075
+#define KPLAT 0.0002
+#define KDLAT 0.001
 
 double saturate_bounds(double max, double min, double val);
 void printnavdata(ardrone_autonomy::Navdata msg);
@@ -46,6 +48,7 @@ ros::Subscriber roomba_subscriber;
 ros::Time newtime, oldtime;
 ros::Duration dt_ros;
 bool targetVisible;
+    bool visibleInLast;
 std_msgs::Float64 cmdNotPBVS, cmdPBVS;
 
 double oldvel_r;
@@ -92,7 +95,25 @@ double z_des = 0.6;
     double x_acc_component;
 #endif
 
+#if defined(AUTODESCENT) || defined(TARGETLOST)
+    ros::Time lastTransition;
+    double timeSinceTransition;
 
+#endif
+#ifdef TARGETLOST
+    float DR_Scale = 0.1;
+    geometry_msgs::Vector3 lastKnownCoords,deadReckoning;
+    geometry_msgs::Vector3 getLastVec(geometry_msgs::Vector3 inPts)
+    {
+        geometry_msgs::Vector3 res;
+
+        res.x = DR_Scale*inPts.x/sqrt(inPts.x*inPts.x + inPts.y * inPts.y);
+        res.y = DR_Scale*inPts.y/sqrt(inPts.x*inPts.x + inPts.y * inPts.y);
+
+        return res;
+    }
+
+#endif
     // This is the callback from the parameter server
 void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
 //  ROS_INFO("Reconfigure Request: %f %f", 
@@ -164,26 +185,49 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     newtime = msg.header.stamp;
     dt_ros = newtime-oldtime;
     dt = dt_ros.toSec();
-    //std::cout << "received Navdata message\n";
+    //std::cout << "received NalastTransitionvdata message\n";
 
     // Create the output message to be published
     geometry_msgs::Twist pid_output;
 
     if(msg.tags_count ==0)
     {
-        srcCmd.publish(cmdNotPBVS);
         pid_output.linear.x = 0;
         pid_output.linear.y = 0;
         pid_output.linear.z = 0;
         pid_output.angular.x = 0.1;
         pid_output.angular.y = 0.1;// Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
         pid_output.angular.z = 0;
+
+        if(targetVisible)
+        {
+            srcCmd.publish(cmdNotPBVS);
+
+#ifdef TARGETLOST
+            deadReckoning = getLastVec(lastKnownCoords);
+            lastTransition = ros::Time::now();
+        }
+        timeSinceTransition = (ros::Time::now() - lastTransition).toSec();
+        std::cout << "timeSinceTrans TARGETLOST " << timeSinceTransition << '\n';
+        if(timeSinceTransition < 3.0)
+        {
+            pid_output.linear.x = deadReckoning.x;
+            pid_output.linear.y = deadReckoning.y;
+            pid_output.linear.z = 0;
+            pid_output.angular.x = 1000;
+            pid_output.angular.y = 1000;// Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
+            pid_output.angular.z = 0.1;
+#endif
+        }
         quad_twist.publish(pid_output);
         targetVisible = 0;
         return;
     }
     if(targetVisible == 0)
     {
+#if defined(AUTODESCENT)
+        lastTransition = ros::Time::now();
+#endif
         pidx.rst_integral();
         pidy.rst_integral();
         pidz.rst_integral();
@@ -194,14 +238,10 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
         targetVisible = 1;
     }
 
-    // Assign new time into newtime global variable
-
-
-
     double xpos0, ypos0,zpos0, delta_x,delta_y,delta_z,delta_psi;
 
-    xpos0 = (msg.tags_xc[0]-500.0)/878.41; // TODO - why these two values?
-    ypos0 = (msg.tags_yc[0]-500.0)/917.19;
+    xpos0 = (msg.tags_xc[0]-500.0)/878.41; // the 878.41 is the focal length in the x direction in units of pixels
+    ypos0 = (msg.tags_yc[0]-500.0)/917.19; // the 917.19 is the focal length in the y direction in units of pixels
     zpos0 = msg.tags_distance[0];
     //psi needs somewhat special treatment, because for ArDrone it gets reported in degrees, from 0 to 360
     //delta_psi = (180-msg.tags_orientation[0]); // original, "proper" orientation
@@ -216,7 +256,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
     //std::cout << "original: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
     virtcam(orig,(-msg.rotY*M_PI/180), (-msg.rotX*M_PI/180), msg.tags_distance[0]);
- std::cout << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
+// std::cout << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
 //    std::cout << "modified: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
 
     xpos0 = orig[0];
@@ -248,12 +288,27 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     //std::cout << "X delta, y output: " << delta_x << "   " << pid_output.linear.y << '\n';
    // std::cout << "Z delta, z output: " << (zpos0-ZDES) << "   " << pid_output.linear.z << '\n';
 
-    // Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
-    pid_output.angular.y = 0.1;
+#ifdef AUTODESCENT
+    timeSinceTransition = (ros::Time::now() - lastTransition).toSec();
+    std::cout << "timeSinceTrans AUTODESCENT " << timeSinceTransition << '\n';
+    if(timeSinceTransition > 2.0)
+    {
+        pid_output.linear.z = -0.1;
+        pid_output.angular.x = 999;
+        pid_output.angular.y = -999;
+    }
+#endif
+
+
+    // Send the delta y in angular x, and the delta x in angular y - this is for the optitrack control on the position_controller side.
+  //  pid_output.angular.x = delta_y;
+  //  pid_output.angular.y = delta_x;
     pid_output.angular.z = -pidpsi.calculate(0,delta_psi,dt);
 
-    //std::cout << "psi delta-180, psi output: " << delta_psi << "   " << pid_output.angular.z << '\n';
-
+#ifdef TARGETLOST
+    lastKnownCoords.x = delta_x;
+    lastKnownCoords.y = delta_y;
+#endif
     oldtime = newtime;
 
 #ifdef USEROOMBA_ACC
