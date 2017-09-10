@@ -25,12 +25,14 @@
 //#define USEROOMBA_VEL
 //#define USEROOMBA_ACC
 //#define AUTODESCENT
-#define TARGETLOST
+//#define TARGETLOST
 
 #define ZDES 200 //desired height in cm
 
-#define KPLAT 0.0002
-#define KDLAT 0.001
+#define KPLAT 0.035
+#define KDLAT 0.25
+#define TARGETSCALE (12/(100*22.2))
+
 
 double saturate_bounds(double max, double min, double val);
 void printnavdata(ardrone_autonomy::Navdata msg);
@@ -195,11 +197,11 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
         pid_output.linear.x = 0;
         pid_output.linear.y = 0;
         pid_output.linear.z = 0;
-        pid_output.angular.x = 0.1;
-        pid_output.angular.y = 0.1;// Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
+        pid_output.angular.x = 111;
+        pid_output.angular.y = 111;// Send a constant angular 111 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
         pid_output.angular.z = 0;
 
-        if(targetVisible)
+        if(targetVisible) // this means target was seen in last frame but not in this one
         {
             srcCmd.publish(cmdNotPBVS);
 
@@ -208,22 +210,25 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
             lastTransition = ros::Time::now();
         }
         timeSinceTransition = (ros::Time::now() - lastTransition).toSec();
-        std::cout << "timeSinceTrans TARGETLOST " << timeSinceTransition << '\n';
+        //std::cout << "timeSinceTrans TARGETLOST " << timeSinceTransition << '\n';
         if(timeSinceTransition < 3.0)
         {
             pid_output.linear.x = deadReckoning.x;
             pid_output.linear.y = deadReckoning.y;
-            pid_output.linear.z = 0;
-            pid_output.angular.x = 1000;
-            pid_output.angular.y = 1000;// Send a constant angular 0.1 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
-            pid_output.angular.z = 0.1;
+            pid_output.linear.z = 0.1;
+            pid_output.angular.x = 0;
+            pid_output.angular.y = 0;
+            pid_output.angular.z = 1000; // Send a constant angular 1000 in x and y - this tells the position controller we're dead reckoning
+            std::cout << "<3s since target lost: x: " << pid_output.linear.x << " y: " << pid_output.linear.y << '\n';
 #endif
         }
+        //std::cout << "target lost: x: " << pid_output.linear.x << " y: " << pid_output.linear.y << '\n';
         quad_twist.publish(pid_output);
         targetVisible = 0;
+
         return;
     }
-    if(targetVisible == 0)
+    if(targetVisible == 0) // This means target was not visible in last frame, but is in this one.
     {
 #if defined(AUTODESCENT)
         lastTransition = ros::Time::now();
@@ -256,15 +261,15 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
     //std::cout << "original: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
     virtcam(orig,(-msg.rotY*M_PI/180), (-msg.rotX*M_PI/180), msg.tags_distance[0]);
-// std::cout << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
+ //std::cout << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
 //    std::cout << "modified: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
 
     xpos0 = orig[0];
     ypos0 = orig[1];
 
     //std::cout << "x,y:   " << xpos0 << " " << ypos0 << '\n';
-    delta_x = xpos0 * zpos0;
-    delta_y = ypos0 * zpos0;
+    delta_x = xpos0 * zpos0*TARGETSCALE; // See sept 9th 2017 notes
+    delta_y = ypos0 * zpos0*TARGETSCALE;
 /*
     double rotx, roty, rotz;
     rotx = msg.rotX*M_PI/180.0;
@@ -290,19 +295,19 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
 #ifdef AUTODESCENT
     timeSinceTransition = (ros::Time::now() - lastTransition).toSec();
-    std::cout << "timeSinceTrans AUTODESCENT " << timeSinceTransition << '\n';
+    //std::cout << "timeSinceTrans AUTODESCENT " << timeSinceTransition << '\n';
     if(timeSinceTransition > 2.0)
     {
         pid_output.linear.z = -0.1;
-        pid_output.angular.x = 999;
-        pid_output.angular.y = -999;
+//        pid_output.angular.x = 999;
+//        pid_output.angular.y = -999;
     }
 #endif
 
 
     // Send the delta y in angular x, and the delta x in angular y - this is for the optitrack control on the position_controller side.
-  //  pid_output.angular.x = delta_y;
-  //  pid_output.angular.y = delta_x;
+    pid_output.angular.x = delta_y;
+    pid_output.angular.y = delta_x;
     pid_output.angular.z = -pidpsi.calculate(0,delta_psi,dt);
 
 #ifdef TARGETLOST
