@@ -22,7 +22,7 @@
 //#define USEOPTI
 //#define USEVICON
 
-//#define USEROOMBA_VEL
+#define USEROOMBA_VEL
 //#define USEROOMBA_ACC
 //#define AUTODESCENT
 //#define TARGETLOST
@@ -31,12 +31,17 @@
 
 #define KPLAT 0.035
 #define KDLAT 0.25
+
 #define TARGETSCALE (12/(100*22.2))
+#define FX 670
+#define FY 670
+#define X0 500//470
+#define Y0 445//387.4
 
 
 double saturate_bounds(double max, double min, double val);
 void printnavdata(ardrone_autonomy::Navdata msg);
-void virtcam(double origImgPts[], double camRoll, double camPitch, double z_est);
+void virtcam(double origImgPts[], double camRoll, double camPitch);
 
 // Here I use global publisher and subscriber, since I want to access the
 // publisher in the function MsgCallback:
@@ -142,7 +147,7 @@ void callback(ardronecontrol::PIDsetConfig &config, uint32_t level) {
   Kp_x_acc = config.Kp_x_acc;
   Kd_x_acc = config.Kd_x_acc;
   Ki_x_acc = config.Ki_x_acc;
-  pidx_acc.mod_params(Kp_x_acc,Kd_x_acc,Ki_x_acc);
+  pidx_acc.mod_params(Kplinear_x_acc,Kd_x_acc,Ki_x_acc);
 #endif
 
 /*
@@ -189,17 +194,23 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     dt = dt_ros.toSec();
     //std::cout << "received NalastTransitionvdata message\n";
 
-    // Create the output message to be published
+    // Create the output mess650.87age to be published
     geometry_msgs::Twist pid_output;
-
+    pid_output.linear.x = 0;
+    pid_output.linear.y = 0;
+    pid_output.linear.z = 0;
+    pid_output.angular.x = 0;
+    pid_output.angular.y = 0;
+    pid_output.angular.z = 0;
+/*
     if(msg.tags_count ==0)
     {
         pid_output.linear.x = 0;
         pid_output.linear.y = 0;
         pid_output.linear.z = 0;
-        pid_output.angular.x = 111;
-        pid_output.angular.y = 111;// Send a constant angular 111 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
-        pid_output.angular.z = 0;
+        pid_output.angular.x = 0;
+        pid_output.angular.y = 0;// Send a constant angular 111 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
+        pid_output.angular.z = -1000;
 
         if(targetVisible) // this means target was seen in last frame but not in this one
         {
@@ -218,7 +229,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
             pid_output.linear.z = 0.1;
             pid_output.angular.x = 0;
             pid_output.angular.y = 0;
-            pid_output.angular.z = 1000; // Send a constant angular 1000 in x and y - this tells the position controller we're dead reckoning
+            pid_output.angular.z = 1000; // Send a constant angular 1000 in angular z - this tells the position controller we're dead reckoning
             std::cout << "<3s since target lost: x: " << pid_output.linear.x << " y: " << pid_output.linear.y << '\n';
 #endif
         }
@@ -243,12 +254,17 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
         targetVisible = 1;
     }
 
-    double xpos0, ypos0,zpos0, delta_x,delta_y,delta_z,delta_psi;
+    double xtag, ytag, xpos0, ypos0,zpos0, delta_x,delta_y,delta_z,delta_psi;
 
-    xpos0 = (msg.tags_xc[0]-500.0)/878.41; // the 878.41 is the focal length in the x direction in units of pixels
-    ypos0 = (msg.tags_yc[0]-500.0)/917.19; // the 917.19 is the focal length in the y direction in units of pixels
-    zpos0 = msg.tags_distance[0];
-    //psi needs somewhat special treatment, because for ArDrone it gets reported in degrees, from 0 to 360
+    std::cout << '\n' << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
+    xtag = (double) msg.tags_xc[0]; // necessary to avoid int/double errors
+    ytag = (double) msg.tags_yc[0];
+
+    xpos0 = (xtag-X0)/FX;
+    ypos0 = (ytag-Y0)/FY;
+    zpos0 = msg.tags_distance[0]*TARGETSCALE;// See sept 9th 2017 notes
+
+//s somewhat special treatment, because for ArDrone it gets reported in degrees, from 0 to 360
     //delta_psi = (180-msg.tags_orientation[0]); // original, "proper" orientation
     delta_psi = msg.tags_orientation[0]-90;
     if ((delta_psi)>180)
@@ -258,30 +274,21 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     double orig[2], virt[2];
     orig[0] = xpos0;
     orig[1] = ypos0;
-
-    //std::cout << "original: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
-    virtcam(orig,(-msg.rotY*M_PI/180), (-msg.rotX*M_PI/180), msg.tags_distance[0]);
- //std::cout << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
-//    std::cout << "modified: " << ((orig[0]*878.41)+500.0) << " " << ((orig[1]*917.19)+500.0) << '\n';
+    orig[2] = zpos0;
+    std::cout << xtag << " " << ytag << "\n";
+    //std::cout << "original: " << xpos0 << " " << ypos0 << " " << zpos0 << '\n';
+    //virtcam(orig,0, 0);
+    virtcam(orig,(-msg.rotY*M_PI/180), (-msg.rotX*M_PI/180));
 
     xpos0 = orig[0];
     ypos0 = orig[1];
+    zpos0 = orig[2];
+    //std::cout << "modified: " << xpos0 << " " << ypos0 <<" " << zpos0 << '\n';
 
-    //std::cout << "x,y:   " << xpos0 << " " << ypos0 << '\n';
-    delta_x = xpos0 * zpos0*TARGETSCALE; // See sept 9th 2017 notes
-    delta_y = ypos0 * zpos0*TARGETSCALE;
-/*
-    double rotx, roty, rotz;
-    rotx = msg.rotX*M_PI/180.0;
-    roty = msg.rotY*M_PI/180.0;
-    rotz = msg.rotZ*M_PI/180.0;
-    double derotx, deroty, derotz, xprime, yprime;
+    delta_x = ((xpos0 * zpos0)-0.047)/1.5997;
+    delta_y = ((ypos0 * zpos0)+0.0439)/2.1789;
 
-    xprime = msg.tags_distance[0]*sin(rotx - atan((msg.tags_xc[0]-500.0)/878.41)); // the 878.41 is the focal length in the x direction in units of pixels
-    yprime = msg.tags_distance[0]*sin(roty - atan((msg.tags_yc[0]-500.0)/917.19)); // the 878.41 is the focal length in the x direction in units of pixels
-*/
-
-
+    std::cout << "deltax, deltay: " << delta_x << " " << delta_y << "\n";
 
     // Populate the output message
     //Note that we swap deltax and deltay because of coordinate system differences
@@ -315,15 +322,16 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     lastKnownCoords.y = delta_y;
 #endif
     oldtime = newtime;
-
+*/
 #ifdef USEROOMBA_ACC
-    pid_output.linear.x += x_acc_component;
+    pid_output.linear.y += x_acc_component; // this assumes the rover is moving along y axis
 #endif
 #ifdef USEROOMBA_VEL
-    pid_output.linear.x += x_vel_component;
+    pid_output.linear.y += x_vel_component;// this assumes the rover is moving along y axis
 #endif
+    // Saturate then publish PID output:
     pid_output.linear.x = saturate_bounds(1,-1,pid_output.linear.x);
-    // publish PID output:
+    pid_output.linear.y = saturate_bounds(1,-1,pid_output.linear.y);
     quad_twist.publish(pid_output);
 }
 
@@ -348,10 +356,11 @@ void roombaCallback(const geometry_msgs::TwistStamped& velcmd)
     oldtime_r = newtime_r;
 }
 
-void virtcam(double origImgPts[],double camRoll, double camPitch, double z_est)
+void virtcam(double origImgPts[],double camRoll, double camPitch)
 {
     double u0 = origImgPts[0];
     double v0 = origImgPts[1];
+    double z_est = origImgPts[2];
 
     double x = u0*z_est;
     double y = v0*z_est;
@@ -362,6 +371,8 @@ void virtcam(double origImgPts[],double camRoll, double camPitch, double z_est)
 
     origImgPts[0] = x_v/z_v;
     origImgPts[1] = y_v/z_v;
+    origImgPts[2] = z_v;
+
     //std::cout << "u0,v0: " << u0 << " " << v0 << " x,y " << x << " " << y << " x_v, y_v: " << x_v << " " << y_v << " output: " << origImgPts[0] << " " << origImgPts[1] << '\n';
 
 }
