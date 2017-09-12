@@ -24,15 +24,15 @@
 
 #define USEROOMBA_VEL
 //#define USEROOMBA_ACC
-//#define AUTODESCENT
-//#define TARGETLOST
+#define AUTODESCENT
+#define TARGETLOST
 
-#define ZDES 200 //desired height in cm
+#define ZDES 1.0 //desired height in m
 
 #define KPLAT 0.035
 #define KDLAT 0.25
 
-#define TARGETSCALE (12/(100*22.2))
+#define TARGETSCALE (8/(100*22.2))
 #define FX 670
 #define FY 670
 #define X0 500//470
@@ -92,7 +92,7 @@ double z_des = 0.6;
     double Kd_x_vel = 0.0;
     double Ki_x_vel = 0.0;
     PID pidx_vel = PID(dt,1,-1,Kp_x_vel,Kd_x_vel,Ki_x_vel);
-    double x_vel_component;
+    double x_vel_component = 0;
 #endif
 #ifdef USEROOMBA_ACC
     double Kp_x_acc = 0.1;
@@ -114,8 +114,8 @@ double z_des = 0.6;
     {
         geometry_msgs::Vector3 res;
 
-        res.x = DR_Scale*inPts.x/sqrt(inPts.x*inPts.x + inPts.y * inPts.y);
-        res.y = DR_Scale*inPts.y/sqrt(inPts.x*inPts.x + inPts.y * inPts.y);
+        res.x = saturate_bounds(1,-1,DR_Scale*inPts.x/sqrt(inPts.x*inPts.x + inPts.y * inPts.y));
+        res.y = saturate_bounds(1,-1,DR_Scale*inPts.y/sqrt(inPts.x*inPts.x + inPts.y * inPts.y));
 
         return res;
     }
@@ -202,15 +202,15 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     pid_output.angular.x = 0;
     pid_output.angular.y = 0;
     pid_output.angular.z = 0;
-/*
+
     if(msg.tags_count ==0)
     {
-        pid_output.linear.x = 0;
+        pid_output.linear.x = -1000;
         pid_output.linear.y = 0;
         pid_output.linear.z = 0;
         pid_output.angular.x = 0;
-        pid_output.angular.y = 0;// Send a constant angular 111 in y - this has no effect other than to remove the "auto-hover" function in ardrone-autonomy
-        pid_output.angular.z = -1000;
+        pid_output.angular.y = 0;
+        pid_output.angular.z = 0;
 
         if(targetVisible) // this means target was seen in last frame but not in this one
         {
@@ -222,15 +222,15 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
         }
         timeSinceTransition = (ros::Time::now() - lastTransition).toSec();
         //std::cout << "timeSinceTrans TARGETLOST " << timeSinceTransition << '\n';
-        if(timeSinceTransition < 3.0)
+        if(timeSinceTransition < 5.0)
         {
-            pid_output.linear.x = deadReckoning.x;
-            pid_output.linear.y = deadReckoning.y;
+            pid_output.linear.x = -500;
+            pid_output.linear.y = 0;
             pid_output.linear.z = 0.1;
-            pid_output.angular.x = 0;
-            pid_output.angular.y = 0;
-            pid_output.angular.z = 1000; // Send a constant angular 1000 in angular z - this tells the position controller we're dead reckoning
-            std::cout << "<3s since target lost: x: " << pid_output.linear.x << " y: " << pid_output.linear.y << '\n';
+            pid_output.angular.x = deadReckoning.x;
+            pid_output.angular.y = deadReckoning.y;
+            pid_output.angular.z = 0; // Send a constant angular 1000 in angular z - this tells the position controller we're dead reckoning
+            //std::cout << "<3s since target lost: x: " << pid_output.linear.x << " y: " << pid_output.linear.y << '\n';
 #endif
         }
         //std::cout << "target lost: x: " << pid_output.linear.x << " y: " << pid_output.linear.y << '\n';
@@ -244,7 +244,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 #if defined(AUTODESCENT)
         lastTransition = ros::Time::now();
 #endif
-        pidx.rst_integral();
+        pidx.rst_in3tegral();
         pidy.rst_integral();
         pidz.rst_integral();
         pidpsi.rst_integral();
@@ -256,7 +256,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
     double xtag, ytag, xpos0, ypos0,zpos0, delta_x,delta_y,delta_z,delta_psi;
 
-    std::cout << '\n' << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
+    //std::cout << '\n' << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
     xtag = (double) msg.tags_xc[0]; // necessary to avoid int/double errors
     ytag = (double) msg.tags_yc[0];
 
@@ -275,7 +275,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     orig[0] = xpos0;
     orig[1] = ypos0;
     orig[2] = zpos0;
-    std::cout << xtag << " " << ytag << "\n";
+    //std::cout << xtag << " " << ytag << "\n";
     //std::cout << "original: " << xpos0 << " " << ypos0 << " " << zpos0 << '\n';
     //virtcam(orig,0, 0);
     virtcam(orig,(-msg.rotY*M_PI/180), (-msg.rotX*M_PI/180));
@@ -288,13 +288,14 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     delta_x = ((xpos0 * zpos0)-0.047)/1.5997;
     delta_y = ((ypos0 * zpos0)+0.0439)/2.1789;
 
-    std::cout << "deltax, deltay: " << delta_x << " " << delta_y << "\n";
+    //std::cout << "deltax, deltay: " << delta_x << " " << delta_y << "\n";
 
     // Populate the output message
     //Note that we swap deltax and deltay because of coordinate system differences
     pid_output.linear.x = pidx.calculate(0,delta_y,dt);
     pid_output.linear.y = pidy.calculate(0,delta_x,dt);
     pid_output.linear.z = pidz.calculate(ZDES,zpos0,dt);
+    //std::cout << "ZDES: " << ZDES << " zpos0: " << zpos0 << '\n';
 
     //std::cout << "Y delta, x output: " << delta_y << "   " << pid_output.linear.x << '\n';
     //std::cout << "X delta, y output: " << delta_x << "   " << pid_output.linear.y << '\n';
@@ -322,7 +323,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     lastKnownCoords.y = delta_y;
 #endif
     oldtime = newtime;
-*/
+
 #ifdef USEROOMBA_ACC
     pid_output.linear.y += x_acc_component; // this assumes the rover is moving along y axis
 #endif
