@@ -244,7 +244,7 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 #if defined(AUTODESCENT)
         lastTransition = ros::Time::now();
 #endif
-        pidx.rst_in3tegral();
+        pidx.rst_integral();
         pidy.rst_integral();
         pidz.rst_integral();
         pidpsi.rst_integral();
@@ -256,13 +256,14 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 
     double xtag, ytag, xpos0, ypos0,zpos0, delta_x,delta_y,delta_z,delta_psi;
 
-    //std::cout << '\n' << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
+    std::cout << '\n' << msg.tags_xc[0] << " " << msg.tags_yc[0] << "\n";
     xtag = (double) msg.tags_xc[0]; // necessary to avoid int/double errors
     ytag = (double) msg.tags_yc[0];
 
     xpos0 = (xtag-X0)/FX;
     ypos0 = (ytag-Y0)/FY;
     zpos0 = msg.tags_distance[0]*TARGETSCALE;// See sept 9th 2017 notes
+    //std::cout << "zpos: " << zpos0 << "\n";
 
 //s somewhat special treatment, because for ArDrone it gets reported in degrees, from 0 to 360
     //delta_psi = (180-msg.tags_orientation[0]); // original, "proper" orientation
@@ -285,9 +286,10 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
     zpos0 = orig[2];
     //std::cout << "modified: " << xpos0 << " " << ypos0 <<" " << zpos0 << '\n';
 
-    delta_x = ((xpos0 * zpos0)-0.047)/1.5997;
-    delta_y = ((ypos0 * zpos0)+0.0439)/2.1789;
-
+ //   delta_x = ((xpos0 * zpos0)-0.047)/1.5997;
+ //   delta_y = ((ypos0 * zpos0)+0.0439)/2.1789;
+    delta_x = orig[0];
+    delta_y = orig[1];
     //std::cout << "deltax, deltay: " << delta_x << " " << delta_y << "\n";
 
     // Populate the output message
@@ -304,11 +306,13 @@ void MsgCallback(const ardrone_autonomy::Navdata msg)
 #ifdef AUTODESCENT
     timeSinceTransition = (ros::Time::now() - lastTransition).toSec();
     //std::cout << "timeSinceTrans AUTODESCENT " << timeSinceTransition << '\n';
-    if(timeSinceTransition > 2.0)
+    if(zpos0 < 0.5)
     {
         pid_output.linear.z = -0.1;
-//        pid_output.angular.x = 999;
-//        pid_output.angular.y = -999;
+    }
+    else if(timeSinceTransition > 2.0)
+    {
+        pid_output.linear.z = -0.1;
     }
 #endif
 
@@ -362,17 +366,18 @@ void virtcam(double origImgPts[],double camRoll, double camPitch)
     double u0 = origImgPts[0];
     double v0 = origImgPts[1];
     double z_est = origImgPts[2];
-
-    double x = u0*z_est;
-    double y = v0*z_est;
+    double x = ((u0*z_est)-0.047)/1.5997;
+    double y = ((v0*z_est)+0.0439)/2.1789;
+   std::cout << "x_est: " << x << " y_est: " << y << '\n';
 
     double x_v = cos(camPitch)*x + sin(camRoll)*sin(camPitch)*y + cos(camRoll)*sin(camPitch)*z_est;
     double y_v = cos(camRoll)*y-sin(camRoll)*z_est;
     double z_v = -sin(camPitch)*x+cos(camPitch)*sin(camRoll)*y+cos(camPitch)*cos(camRoll)*z_est;
 
-    origImgPts[0] = x_v/z_v;
-    origImgPts[1] = y_v/z_v;
+    origImgPts[0] = x_v;//z_v;
+    origImgPts[1] = y_v;//z_v;
     origImgPts[2] = z_v;
+    std::cout << "after virtcam: x_est: " << x_v << " y_est: " << y_v << '\n';
 
     //std::cout << "u0,v0: " << u0 << " " << v0 << " x,y " << x << " " << y << " x_v, y_v: " << x_v << " " << y_v << " output: " << origImgPts[0] << " " << origImgPts[1] << '\n';
 
